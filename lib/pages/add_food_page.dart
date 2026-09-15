@@ -27,7 +27,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
     'Packaged',
   ];
 
+  // Working sodium estimates per 100 g.
+  // Prepared-food sodium varies depending on recipe,
+  // ingredients, sauces, seasonings, and brand.
   static const List<Map<String, dynamic>> _foods = [
+    // =========================
+    // MEALS — 25
+    // =========================
     {
       'name': 'Chicken Adobo',
       'sodium': 720,
@@ -153,6 +159,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
       'sodium': 730,
       'category': 'Meals',
     },
+
+    // =========================
+    // SNACKS — 10
+    // =========================
     {
       'name': 'Potato Chips',
       'sodium': 170,
@@ -203,6 +213,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
       'sodium': 520,
       'category': 'Snacks',
     },
+
+    // =========================
+    // FRUITS — 10
+    // =========================
     {
       'name': 'Banana',
       'sodium': 1,
@@ -253,6 +267,10 @@ class _AddFoodPageState extends State<AddFoodPage> {
       'sodium': 0,
       'category': 'Fruits',
     },
+
+    // =========================
+    // PACKAGED — 5
+    // =========================
     {
       'name': 'Instant Noodles',
       'sodium': 900,
@@ -306,14 +324,18 @@ class _AddFoodPageState extends State<AddFoodPage> {
   ) async {
     final sodiumPer100g = (food['sodium'] as num).toDouble();
 
-    final gramsController = TextEditingController(text: '100');
+    final gramsController = TextEditingController(
+      text: '100',
+    );
 
     bool saving = false;
 
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return StatefulBuilder(
           builder: (
             context,
@@ -343,7 +365,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     _buildTrafficLight(
                       sodiumPer100g,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(
+                      height: 18,
+                    ),
                     Row(
                       children: [
                         const Expanded(
@@ -359,7 +383,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(
+                      height: 16,
+                    ),
                     TextField(
                       controller: gramsController,
                       enabled: !saving,
@@ -367,7 +393,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         decimal: true,
                       ),
                       onChanged: (_) {
-                        setDialogState(() {});
+                        setDialogState(
+                          () {},
+                        );
                       },
                       decoration: const InputDecoration(
                         labelText: 'Amount Consumed',
@@ -376,11 +404,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(
+                      height: 16,
+                    ),
                     Container(
-                      padding: const EdgeInsets.all(
-                        16,
-                      ),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: color.withValues(
                           alpha: 0.08,
@@ -419,7 +447,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             dialogContext,
                           ).pop();
                         },
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                  ),
                 ),
                 FilledButton(
                   onPressed: saving
@@ -436,22 +466,24 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             return;
                           }
 
-                          final totalSodium =
-                              (sodiumPer100g * grams / 100).round();
+                          final total = (sodiumPer100g * grams / 100).round();
 
-                          setDialogState(() {
-                            saving = true;
-                          });
+                          setDialogState(
+                            () {
+                              saving = true;
+                            },
+                          );
 
                           try {
                             await _foodLogService.addFoodLog(
                               requestId: _foodLogService.createRequestId(),
                               foodName: food['name'].toString(),
-                              sodiumAmount: totalSodium,
+                              sodiumAmount: total,
                               logDate: _foodLogService.philippineNow,
                               entryType: 'searched',
                               servings: grams / 100,
                               sodiumPerServingMg: sodiumPer100g.round(),
+                              sodiumBasis: 'per_100g',
                             );
 
                             if (!dialogContext.mounted) {
@@ -475,9 +507,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               return;
                             }
 
-                            setDialogState(() {
-                              saving = false;
-                            });
+                            setDialogState(
+                              () {
+                                saving = false;
+                              },
+                            );
 
                             _showMessage(
                               'Could not add food.',
@@ -526,7 +560,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return StatefulBuilder(
           builder: (
             context,
@@ -564,7 +600,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(
+                      height: 12,
+                    ),
                     TextField(
                       controller: sodiumController,
                       enabled: !saving,
@@ -572,7 +610,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         decimal: true,
                       ),
                       onChanged: (_) {
-                        setDialogState(() {});
+                        setDialogState(
+                          () {},
+                        );
                       },
                       decoration: const InputDecoration(
                         labelText: 'Sodium per 100 g',
@@ -582,7 +622,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(
+                      height: 12,
+                    ),
                     TextField(
                       controller: gramsController,
                       enabled: !saving,
@@ -590,7 +632,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         decimal: true,
                       ),
                       onChanged: (_) {
-                        setDialogState(() {});
+                        setDialogState(
+                          () {},
+                        );
                       },
                       decoration: const InputDecoration(
                         labelText: 'Amount Consumed',
@@ -599,16 +643,18 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       ),
                     ),
                     if (sodiumPer100g != null && sodiumPer100g >= 0) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(
+                        height: 16,
+                      ),
                       _buildTrafficLight(
                         sodiumPer100g,
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(
+                      height: 16,
+                    ),
                     Container(
-                      padding: const EdgeInsets.all(
-                        14,
-                      ),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: Theme.of(
                           context,
@@ -647,7 +693,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             dialogContext,
                           ).pop();
                         },
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                  ),
                 ),
                 FilledButton(
                   onPressed: saving
@@ -655,7 +703,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       : () async {
                           final foodName = nameController.text.trim();
 
-                          final sodiumPer100g = double.tryParse(
+                          final sodium = double.tryParse(
                             sodiumController.text.trim(),
                           );
 
@@ -670,7 +718,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             return;
                           }
 
-                          if (sodiumPer100g == null || sodiumPer100g < 0) {
+                          if (sodium == null || sodium < 0) {
                             _showMessage(
                               'Enter a valid sodium amount.',
                             );
@@ -684,22 +732,24 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             return;
                           }
 
-                          final totalSodium =
-                              (sodiumPer100g * grams / 100).round();
+                          final total = (sodium * grams / 100).round();
 
-                          setDialogState(() {
-                            saving = true;
-                          });
+                          setDialogState(
+                            () {
+                              saving = true;
+                            },
+                          );
 
                           try {
                             await _foodLogService.addFoodLog(
                               requestId: _foodLogService.createRequestId(),
                               foodName: foodName,
-                              sodiumAmount: totalSodium,
+                              sodiumAmount: total,
                               logDate: _foodLogService.philippineNow,
                               entryType: 'manual',
                               servings: grams / 100,
-                              sodiumPerServingMg: sodiumPer100g.round(),
+                              sodiumPerServingMg: sodium.round(),
+                              sodiumBasis: 'per_100g',
                             );
 
                             if (!dialogContext.mounted) {
@@ -723,9 +773,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                               return;
                             }
 
-                            setDialogState(() {
-                              saving = false;
-                            });
+                            setDialogState(
+                              () {
+                                saving = false;
+                              },
+                            );
 
                             _showMessage(
                               'Could not add food.',
@@ -797,7 +849,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
             color: color,
             size: 24,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(
+            width: 12,
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -880,7 +934,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(
+            height: 16,
+          ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -904,7 +960,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
               ).toList(),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(
+            height: 20,
+          ),
           Row(
             children: [
               const Expanded(
@@ -924,16 +982,21 @@ class _AddFoodPageState extends State<AddFoodPage> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(
+            height: 4,
+          ),
           Text(
             'Sodium values are shown per 100 g. '
             'Prepared-food values are estimates and can vary by recipe.',
             style: TextStyle(
               color: Colors.grey.shade600,
               fontSize: 11,
+              height: 1.3,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(
+            height: 12,
+          ),
           if (foods.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(
@@ -962,7 +1025,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
             ...foods.map(
               _buildFoodCard,
             ),
-          const SizedBox(height: 16),
+          const SizedBox(
+            height: 16,
+          ),
           OutlinedButton.icon(
             onPressed: _showManualFoodDialog,
             icon: const Icon(
@@ -1024,7 +1089,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   color: color,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(
+                width: 12,
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1068,7 +1135,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
                   ),
                 ],
               ),
-              const SizedBox(width: 4),
+              const SizedBox(
+                width: 4,
+              ),
               const Icon(
                 Icons.chevron_right,
               ),

@@ -5,7 +5,9 @@ import '../services/food_api_service.dart';
 import 'product_result_page.dart';
 
 class ScannerPage extends StatefulWidget {
-  const ScannerPage({super.key});
+  const ScannerPage({
+    super.key,
+  });
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -26,18 +28,28 @@ class _ScannerPageState extends State<ScannerPage> {
     super.dispose();
   }
 
-  bool _isValidBarcode(String value) {
+  bool _isValidBarcode(
+    String value,
+  ) {
     final code = value.trim();
 
-    if (code.isEmpty) return false;
+    if (code.isEmpty) {
+      return false;
+    }
 
-    return RegExp(r'^\d{6,18}$').hasMatch(code);
+    return RegExp(
+      r'^\d{6,18}$',
+    ).hasMatch(code);
   }
 
-  Future<void> _processBarcode(String rawCode) async {
+  Future<void> _processBarcode(
+    String rawCode,
+  ) async {
     final code = rawCode.trim();
 
-    if (_isProcessing) return;
+    if (_isProcessing) {
+      return;
+    }
 
     if (!_isValidBarcode(code)) {
       _showMessage(
@@ -52,7 +64,11 @@ class _ScannerPageState extends State<ScannerPage> {
 
     await _controller.stop();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
+    var loadingDialogOpen = true;
 
     showDialog<void>(
       context: context,
@@ -63,12 +79,16 @@ class _ScannerPageState extends State<ScannerPage> {
           child: Center(
             child: Card(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: EdgeInsets.all(
+                  24,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircularProgressIndicator(),
-                    SizedBox(height: 16),
+                    SizedBox(
+                      height: 16,
+                    ),
                     Text(
                       'Fetching product information...',
                     ),
@@ -82,11 +102,22 @@ class _ScannerPageState extends State<ScannerPage> {
     );
 
     try {
-      final product = await FoodApiService.fetchProductByBarcode(code);
+      final product = await FoodApiService.fetchProductByBarcode(
+        code,
+      );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      Navigator.of(context, rootNavigator: true).pop();
+      if (loadingDialogOpen) {
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pop();
+
+        loadingDialogOpen = false;
+      }
 
       if (product != null) {
         final wasLogged = await Navigator.push<bool>(
@@ -98,19 +129,62 @@ class _ScannerPageState extends State<ScannerPage> {
           ),
         );
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         if (wasLogged == true) {
-          Navigator.pop(context, true);
+          Navigator.pop(
+            context,
+            true,
+          );
           return;
         }
       } else {
-        await _showAddCustomProductDialog(code);
-      }
-    } catch (e) {
-      if (!mounted) return;
+        final customProduct = await _showAddCustomProductDialog(
+          code,
+        );
 
-      Navigator.of(context, rootNavigator: true).pop();
+        if (!mounted) {
+          return;
+        }
+
+        if (customProduct != null) {
+          final wasLogged = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductResultPage(
+                product: customProduct,
+              ),
+            ),
+          );
+
+          if (!mounted) {
+            return;
+          }
+
+          if (wasLogged == true) {
+            Navigator.pop(
+              context,
+              true,
+            );
+            return;
+          }
+        }
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      if (loadingDialogOpen) {
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pop();
+
+        loadingDialogOpen = false;
+      }
 
       _showMessage(
         'Could not retrieve this product. '
@@ -130,9 +204,13 @@ class _ScannerPageState extends State<ScannerPage> {
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return AlertDialog(
-          title: const Text('Enter Barcode Manually'),
+          title: const Text(
+            'Enter Barcode Manually',
+          ),
           content: TextField(
             controller: _manualBarcodeController,
             autofocus: true,
@@ -145,25 +223,39 @@ class _ScannerPageState extends State<ScannerPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(
+                  dialogContext,
+                ).pop();
+              },
+              child: const Text(
+                'Cancel',
+              ),
             ),
             FilledButton(
               onPressed: () {
                 final code = _manualBarcodeController.text.trim();
 
-                if (!_isValidBarcode(code)) {
+                if (!_isValidBarcode(
+                  code,
+                )) {
                   _showMessage(
                     'Please enter a valid numeric barcode.',
                   );
                   return;
                 }
 
-                Navigator.pop(dialogContext);
+                Navigator.of(
+                  dialogContext,
+                ).pop();
 
-                _processBarcode(code);
+                _processBarcode(
+                  code,
+                );
               },
-              child: const Text('Search'),
+              child: const Text(
+                'Search',
+              ),
             ),
           ],
         );
@@ -171,141 +263,223 @@ class _ScannerPageState extends State<ScannerPage> {
     );
   }
 
-  Future<void> _showAddCustomProductDialog(
+  Future<ScannedProduct?> _showAddCustomProductDialog(
     String barcode,
   ) async {
     final nameController = TextEditingController();
+
     final sodiumController = TextEditingController();
 
-    await showDialog<void>(
+    final servingSizeController = TextEditingController(
+      text: '1 serving',
+    );
+
+    var selectedBasis = 'per_100g';
+
+    final product = await showDialog<ScannedProduct>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Product Not Found'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'This barcode was not found. '
-                  'You can enter the product information manually.',
+      barrierDismissible: false,
+      builder: (
+        dialogContext,
+      ) {
+        return StatefulBuilder(
+          builder: (
+            context,
+            setDialogState,
+          ) {
+            return AlertDialog(
+              title: const Text(
+                'Product Not Found',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'This barcode was not found. '
+                      'You can enter the nutrition information from the product label.',
+                    ),
+                    const SizedBox(
+                      height: 16,
+                    ),
+                    TextField(
+                      controller: nameController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Food / Product Name',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 14,
+                    ),
+                    const Text(
+                      'Nutrition label basis',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 8,
+                    ),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: 'per_100g',
+                          label: Text(
+                            'Per 100 g',
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: 'per_serving',
+                          label: Text(
+                            'Per Serving',
+                          ),
+                        ),
+                      ],
+                      selected: {
+                        selectedBasis,
+                      },
+                      onSelectionChanged: (selection) {
+                        setDialogState(
+                          () {
+                            selectedBasis = selection.first;
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(
+                      height: 14,
+                    ),
+                    TextField(
+                      controller: sodiumController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: selectedBasis == 'per_100g'
+                            ? 'Sodium per 100 g'
+                            : 'Sodium per Serving',
+                        border: const OutlineInputBorder(),
+                        suffixText: 'mg',
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 12,
+                    ),
+                    if (selectedBasis == 'per_serving')
+                      TextField(
+                        controller: servingSizeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Serving Size',
+                          hintText: 'e.g. 30 g, 1 pack, 110 mL',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    Text(
+                      selectedBasis == 'per_100g'
+                          ? 'Tibok can calculate a traffic-light rating because this value is per 100 g.'
+                          : 'Serving-based sodium can be logged, but Tibok will not assign a traffic-light rating without a per-100 g value.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.35,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Food / Product Name',
-                    border: OutlineInputBorder(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(
+                      dialogContext,
+                    ).pop();
+                  },
+                  child: const Text(
+                    'Cancel',
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: sodiumController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Sodium per Serving',
-                    border: OutlineInputBorder(),
-                    suffixText: 'mg',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Enter sodium from the nutrition label. '
-                  'Do not leave it blank if the amount is unknown.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                FilledButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+
+                    final sodium = int.tryParse(
+                      sodiumController.text.trim(),
+                    );
+
+                    if (name.isEmpty) {
+                      _showMessage(
+                        'Please enter a product name.',
+                      );
+                      return;
+                    }
+
+                    if (sodium == null || sodium < 0) {
+                      _showMessage(
+                        'Please enter a valid sodium amount.',
+                      );
+                      return;
+                    }
+
+                    final servingSize = servingSizeController.text.trim();
+
+                    final customProduct = ScannedProduct(
+                      barcode: barcode,
+                      name: name,
+                      sodiumPer100gMg:
+                          selectedBasis == 'per_100g' ? sodium : null,
+                      sodiumPerServingMg:
+                          selectedBasis == 'per_serving' ? sodium : null,
+                      servingSize: selectedBasis == 'per_serving' &&
+                              servingSize.isNotEmpty
+                          ? servingSize
+                          : selectedBasis == 'per_100g'
+                              ? '100 g'
+                              : '1 serving',
+                      ingredientsText: 'Manually entered product',
+                      hasHiddenSodium: false,
+                      detectedHiddenIngredients: const [],
+                    );
+
+                    Navigator.of(
+                      dialogContext,
+                    ).pop(
+                      customProduct,
+                    );
+                  },
+                  child: const Text(
+                    'Continue',
                   ),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-
-                final sodium = int.tryParse(
-                  sodiumController.text.trim(),
-                );
-
-                if (name.isEmpty) {
-                  _showMessage(
-                    'Please enter a product name.',
-                  );
-                  return;
-                }
-
-                if (sodium == null || sodium < 0) {
-                  _showMessage(
-                    'Please enter a valid sodium amount.',
-                  );
-                  return;
-                }
-
-                Navigator.pop(dialogContext);
-
-                final rating = _getSodiumRating(sodium);
-
-                final customProduct = ScannedProduct(
-                  barcode: barcode,
-                  name: name,
-                  sodiumMg: sodium,
-                  servingSize: '1 serving',
-                  ingredientsText: 'Manually entered product',
-                  hasHiddenSodium: false,
-                  detectedHiddenIngredients: const [],
-                  rating: rating,
-                );
-
-                if (!mounted) return;
-
-                final wasLogged = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProductResultPage(
-                      product: customProduct,
-                    ),
-                  ),
-                );
-
-                if (!mounted) return;
-
-                if (wasLogged == true) {
-                  Navigator.pop(context, true);
-                }
-              },
-              child: const Text('Continue'),
-            ),
-          ],
+            );
+          },
         );
       },
+    );
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 350,
+      ),
     );
 
     nameController.dispose();
     sodiumController.dispose();
+    servingSizeController.dispose();
+
+    return product;
   }
 
-  SodiumRating _getSodiumRating(int sodiumMg) {
-    if (sodiumMg > 400) {
-      return SodiumRating.red;
+  void _showMessage(
+    String message,
+  ) {
+    if (!mounted) {
+      return;
     }
-
-    if (sodiumMg > 140) {
-      return SodiumRating.amber;
-    }
-
-    return SodiumRating.green;
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) return;
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -317,13 +491,19 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Food Barcode'),
+        title: const Text(
+          'Scan Food Barcode',
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.keyboard),
+            icon: const Icon(
+              Icons.keyboard,
+            ),
             tooltip: 'Type Barcode',
             onPressed: _isProcessing ? null : _showManualEntryDialog,
           ),
@@ -331,7 +511,11 @@ class _ScannerPageState extends State<ScannerPage> {
             tooltip: 'Flashlight',
             icon: ValueListenableBuilder(
               valueListenable: _controller,
-              builder: (context, state, child) {
+              builder: (
+                context,
+                state,
+                child,
+              ) {
                 return Icon(
                   state.torchState == TorchState.on
                       ? Icons.flash_on
@@ -339,7 +523,9 @@ class _ScannerPageState extends State<ScannerPage> {
                 );
               },
             ),
-            onPressed: () => _controller.toggleTorch(),
+            onPressed: () {
+              _controller.toggleTorch();
+            },
           ),
         ],
       ),
@@ -347,7 +533,9 @@ class _ScannerPageState extends State<ScannerPage> {
         children: [
           MobileScanner(
             controller: _controller,
-            onDetect: (capture) {
+            onDetect: (
+              capture,
+            ) {
               if (_isProcessing || capture.barcodes.isEmpty) {
                 return;
               }
@@ -355,7 +543,9 @@ class _ScannerPageState extends State<ScannerPage> {
               final code = capture.barcodes.first.rawValue;
 
               if (code != null) {
-                _processBarcode(code);
+                _processBarcode(
+                  code,
+                );
               }
             },
           ),
@@ -388,7 +578,9 @@ class _ScannerPageState extends State<ScannerPage> {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black87,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                        12,
+                      ),
                     ),
                     child: const Text(
                       'Align the barcode inside the frame',
@@ -398,11 +590,17 @@ class _ScannerPageState extends State<ScannerPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(
+                    height: 12,
+                  ),
                   FilledButton.icon(
                     onPressed: _isProcessing ? null : _showManualEntryDialog,
-                    icon: const Icon(Icons.keyboard),
-                    label: const Text('Type Barcode'),
+                    icon: const Icon(
+                      Icons.keyboard,
+                    ),
+                    label: const Text(
+                      'Type Barcode',
+                    ),
                   ),
                 ],
               ),

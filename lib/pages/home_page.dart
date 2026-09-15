@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/food_log_service.dart';
 import '../services/supabase_service.dart';
+import '../utils/sodium_rating.dart';
 import 'add_food_page.dart';
 import 'scanner_page.dart';
 
@@ -45,9 +46,14 @@ class _HomePageState extends State<HomePage> {
   int get _remainingSodium => _dailyLimit - _todaySodium;
 
   double get _progress {
-    if (_dailyLimit <= 0) return 0;
+    if (_dailyLimit <= 0) {
+      return 0;
+    }
 
-    return (_todaySodium / _dailyLimit).clamp(0.0, 1.0);
+    return (_todaySodium / _dailyLimit).clamp(
+      0.0,
+      1.0,
+    );
   }
 
   @override
@@ -79,7 +85,9 @@ class _HomePageState extends State<HomePage> {
         }
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _healthProfile = profile;
@@ -88,7 +96,9 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _errorMessage = e.toString();
@@ -118,7 +128,9 @@ class _HomePageState extends State<HomePage> {
       ),
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (added == true) {
       await _loadDashboard();
@@ -154,11 +166,14 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return '${weekdays[date.weekday - 1]}, '
-        '${months[date.month - 1]} ${date.day}, ${date.year}';
+        '${months[date.month - 1]} '
+        '${date.day}, ${date.year}';
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -172,7 +187,9 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Refresh',
             onPressed: _isLoading ? null : _loadDashboard,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(
+              Icons.refresh,
+            ),
           ),
         ],
       ),
@@ -190,7 +207,9 @@ class _HomePageState extends State<HomePage> {
     if (_errorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(
+            24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -199,7 +218,9 @@ class _HomePageState extends State<HomePage> {
                 size: 58,
                 color: Colors.redAccent,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(
+                height: 14,
+              ),
               const Text(
                 'Unable to load your dashboard.',
                 style: TextStyle(
@@ -207,16 +228,24 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(
+                height: 10,
+              ),
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(
+                height: 18,
+              ),
               FilledButton.icon(
                 onPressed: _loadDashboard,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try Again'),
+                icon: const Icon(
+                  Icons.refresh,
+                ),
+                label: const Text(
+                  'Try Again',
+                ),
               ),
             ],
           ),
@@ -241,15 +270,25 @@ class _HomePageState extends State<HomePage> {
               fontSize: 14,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(
+            height: 18,
+          ),
           _buildSodiumCard(),
-          const SizedBox(height: 18),
+          const SizedBox(
+            height: 18,
+          ),
           _buildQuickActions(),
-          const SizedBox(height: 14),
+          const SizedBox(
+            height: 14,
+          ),
           _buildBloodPressureShortcut(),
-          const SizedBox(height: 26),
+          const SizedBox(
+            height: 26,
+          ),
           _buildFoodLogHeader(),
-          const SizedBox(height: 10),
+          const SizedBox(
+            height: 10,
+          ),
           _buildRecentFoodLogs(),
         ],
       ),
@@ -272,7 +311,9 @@ class _HomePageState extends State<HomePage> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: Colors.redAccent.withValues(alpha: 0.10),
+                    color: Colors.redAccent.withValues(
+                      alpha: 0.10,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -280,7 +321,9 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.redAccent,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(
+                  width: 12,
+                ),
                 const Expanded(
                   child: Text(
                     'Today\'s Sodium Intake',
@@ -299,7 +342,9 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(
+              height: 20,
+            ),
             Text.rich(
               TextSpan(
                 children: [
@@ -320,13 +365,19 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(
+              height: 16,
+            ),
             LinearProgressIndicator(
               value: _progress,
               minHeight: 12,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(
+                10,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(
+              height: 12,
+            ),
             Text(
               isOver
                   ? '${_remainingSodium.abs()} mg over your daily target'
@@ -361,7 +412,9 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(
+          width: 12,
+        ),
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _openAddFood,
@@ -403,7 +456,9 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.redAccent,
               ),
             ),
-            SizedBox(width: 12),
+            SizedBox(
+              width: 12,
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,7 +469,9 @@ class _HomePageState extends State<HomePage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  SizedBox(
+                    height: 2,
+                  ),
                   Text(
                     'View history and health trends',
                     style: TextStyle(
@@ -459,7 +516,9 @@ class _HomePageState extends State<HomePage> {
     if (_todayLogs.isEmpty) {
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(
+            28,
+          ),
           child: Column(
             children: [
               Icon(
@@ -467,14 +526,18 @@ class _HomePageState extends State<HomePage> {
                 size: 46,
                 color: Colors.grey.shade400,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
               const Text(
                 'No food logged today',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(
+                height: 4,
+              ),
               Text(
                 'Scan a product or add a food to begin tracking.',
                 textAlign: TextAlign.center,
@@ -494,8 +557,13 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           for (var i = 0; i < recent.length; i++) ...[
-            _buildFoodRow(recent[i]),
-            if (i < recent.length - 1) const Divider(height: 1),
+            _buildFoodRow(
+              recent[i],
+            ),
+            if (i < recent.length - 1)
+              const Divider(
+                height: 1,
+              ),
           ],
         ],
       ),
@@ -509,14 +577,48 @@ class _HomePageState extends State<HomePage> {
 
     final entryType = log['entry_type']?.toString() ?? 'manual';
 
+    final sodiumBasis = log['sodium_basis']?.toString() ?? 'unknown';
+
+    final sodiumPer100g = sodiumBasis == 'per_100g'
+        ? (log['sodium_per_serving_mg'] as num?)?.toDouble()
+        : null;
+
+    final indicatorColor = sodiumPer100g != null
+        ? SodiumRating.colorFor(
+            sodiumPer100g,
+          )
+        : Colors.grey;
+
+    String neutralLabel;
+
+    switch (entryType) {
+      case 'scanned':
+        neutralLabel = 'Scanned • basis unavailable';
+        break;
+
+      case 'searched':
+        neutralLabel = 'Common Food';
+        break;
+
+      case 'manual':
+      default:
+        neutralLabel = 'Manual food entry';
+    }
+
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: Colors.redAccent.withValues(
+        backgroundColor: indicatorColor.withValues(
           alpha: 0.10,
         ),
         child: Icon(
-          entryType == 'scanned' ? Icons.qr_code_scanner : Icons.restaurant,
-          color: Colors.redAccent,
+          sodiumPer100g != null
+              ? SodiumRating.iconFor(
+                  sodiumPer100g,
+                )
+              : entryType == 'scanned'
+                  ? Icons.qr_code_scanner
+                  : Icons.restaurant,
+          color: indicatorColor,
         ),
       ),
       title: Text(
@@ -524,9 +626,20 @@ class _HomePageState extends State<HomePage> {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      subtitle: Text(
-        entryType == 'scanned' ? 'Scanned product' : 'Food entry',
-      ),
+      subtitle: sodiumPer100g != null
+          ? Text(
+              SodiumRating.labelFor(
+                sodiumPer100g,
+              ),
+              style: TextStyle(
+                color: indicatorColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+            )
+          : Text(
+              neutralLabel,
+            ),
       trailing: Text(
         '$sodium mg',
         style: const TextStyle(

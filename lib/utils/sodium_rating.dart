@@ -25,8 +25,10 @@ class SodiumRating {
     switch (levelFor(sodiumPer100g)) {
       case SodiumLevel.green:
         return 'Low Sodium';
+
       case SodiumLevel.yellow:
         return 'Moderate Sodium';
+
       case SodiumLevel.red:
         return 'High Sodium';
     }
@@ -36,8 +38,10 @@ class SodiumRating {
     switch (levelFor(sodiumPer100g)) {
       case SodiumLevel.green:
         return Colors.green;
+
       case SodiumLevel.yellow:
         return Colors.amber.shade700;
+
       case SodiumLevel.red:
         return Colors.red;
     }
@@ -47,8 +51,10 @@ class SodiumRating {
     switch (levelFor(sodiumPer100g)) {
       case SodiumLevel.green:
         return Icons.check_circle;
+
       case SodiumLevel.yellow:
         return Icons.warning_amber_rounded;
+
       case SodiumLevel.red:
         return Icons.error;
     }

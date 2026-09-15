@@ -74,17 +74,19 @@ class _FoodLogPageState extends State<FoodLogPage> {
       text: log['food_name']?.toString() ?? '',
     );
 
-    final storedSodiumBasis =
-        (log['sodium_per_serving_mg'] as num?)?.toDouble() ??
-            (log['sodium_amount'] as num?)?.toDouble() ??
-            0;
+    final existingBasis = log['sodium_basis']?.toString() ?? 'unknown';
 
-    final storedServings = (log['servings'] as num?)?.toDouble() ?? 1.0;
+    final existingSodium = (log['sodium_per_serving_mg'] as num?)?.toDouble() ??
+        (log['sodium_amount'] as num?)?.toDouble() ??
+        0;
 
-    final initialGrams = storedServings * 100;
+    final existingServings = (log['servings'] as num?)?.toDouble() ?? 1;
+
+    final initialGrams =
+        existingBasis == 'per_100g' ? existingServings * 100 : 100.0;
 
     final sodiumController = TextEditingController(
-      text: storedSodiumBasis.round().toString(),
+      text: existingSodium.round().toString(),
     );
 
     final gramsController = TextEditingController(
@@ -99,7 +101,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return StatefulBuilder(
           builder: (
             context,
@@ -113,7 +117,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
               gramsController.text.trim(),
             );
 
-            final totalSodium = sodiumPer100g != null &&
+            final total = sodiumPer100g != null &&
                     sodiumPer100g >= 0 &&
                     grams != null &&
                     grams > 0
@@ -129,6 +133,30 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (existingBasis != 'per_100g') ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(
+                            alpha: 0.10,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'This older entry does not have a confirmed '
+                          'per-100 g nutrition basis. Enter the correct '
+                          'values below. Saving will update it to the '
+                          'current Tibok format.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 14,
+                      ),
+                    ],
                     TextField(
                       controller: nameController,
                       enabled: !saving,
@@ -147,7 +175,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                         decimal: true,
                       ),
                       onChanged: (_) {
-                        setDialogState(() {});
+                        setDialogState(
+                          () {},
+                        );
                       },
                       decoration: const InputDecoration(
                         labelText: 'Sodium per 100 g',
@@ -166,7 +196,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                         decimal: true,
                       ),
                       onChanged: (_) {
-                        setDialogState(() {});
+                        setDialogState(
+                          () {},
+                        );
                       },
                       decoration: const InputDecoration(
                         labelText: 'Amount Consumed',
@@ -206,7 +238,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                             ),
                           ),
                           Text(
-                            totalSodium == null ? '-- mg' : '$totalSodium mg',
+                            total == null ? '-- mg' : '$total mg',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -239,7 +271,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                             dialogContext,
                           ).pop();
                         },
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                  ),
                 ),
                 FilledButton(
                   onPressed: saving
@@ -247,7 +281,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       : () async {
                           final name = nameController.text.trim();
 
-                          final sodiumPer100g = double.tryParse(
+                          final sodium = double.tryParse(
                             sodiumController.text.trim(),
                           );
 
@@ -264,7 +298,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                             return;
                           }
 
-                          if (sodiumPer100g == null || sodiumPer100g < 0) {
+                          if (sodium == null || sodium < 0) {
                             setDialogState(
                               () {
                                 dialogError = 'Enter a valid sodium amount.';
@@ -282,7 +316,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                             return;
                           }
 
-                          final total = (sodiumPer100g * grams / 100).round();
+                          final total = (sodium * grams / 100).round();
 
                           setDialogState(
                             () {
@@ -297,7 +331,8 @@ class _FoodLogPageState extends State<FoodLogPage> {
                               foodName: name,
                               sodiumAmount: total,
                               servings: grams / 100,
-                              sodiumPerServingMg: sodiumPer100g.round(),
+                              sodiumPerServingMg: sodium.round(),
+                              sodiumBasis: 'per_100g',
                             );
 
                             if (!dialogContext.mounted) {
@@ -321,7 +356,6 @@ class _FoodLogPageState extends State<FoodLogPage> {
                             setDialogState(
                               () {
                                 saving = false;
-
                                 dialogError = 'Could not update food entry.';
                               },
                             );
@@ -381,7 +415,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   dialogContext,
                 ).pop(false);
               },
-              child: const Text('Cancel'),
+              child: const Text(
+                'Cancel',
+              ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -392,7 +428,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   dialogContext,
                 ).pop(true);
               },
-              child: const Text('Delete'),
+              child: const Text(
+                'Delete',
+              ),
             ),
           ],
         );
@@ -453,9 +491,10 @@ class _FoodLogPageState extends State<FoodLogPage> {
               sodiumPer100g,
             ),
             color: color,
-            size: 24,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(
+            width: 12,
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,7 +504,6 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(
@@ -476,7 +514,6 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   style: TextStyle(
                     color: color,
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -523,6 +560,22 @@ class _FoodLogPageState extends State<FoodLogPage> {
         '${date.day}, ${date.year}';
   }
 
+  String _entryTypeLabel(
+    String entryType,
+  ) {
+    switch (entryType) {
+      case 'searched':
+        return 'Common Food';
+
+      case 'scanned':
+        return 'Scanned';
+
+      case 'manual':
+      default:
+        return 'Manual';
+    }
+  }
+
   @override
   Widget build(
     BuildContext context,
@@ -567,7 +620,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
             size: 60,
             color: Colors.redAccent,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(
+            height: 14,
+          ),
           const Text(
             'Unable to load your food log.',
             textAlign: TextAlign.center,
@@ -576,7 +631,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(
+            height: 16,
+          ),
           FilledButton.icon(
             onPressed: _loadLogs,
             icon: const Icon(
@@ -679,24 +736,57 @@ class _FoodLogPageState extends State<FoodLogPage> {
   ) {
     final sodium = (log['sodium_amount'] as num?)?.toInt() ?? 0;
 
-    final storedServings = (log['servings'] as num?)?.toDouble() ?? 1;
-
-    final grams = storedServings * 100;
-
     final entryType = log['entry_type']?.toString() ?? 'manual';
+
+    final sodiumBasis = log['sodium_basis']?.toString() ?? 'unknown';
+
+    final sodiumPer100g = sodiumBasis == 'per_100g'
+        ? (log['sodium_per_serving_mg'] as num?)?.toDouble()
+        : null;
+
+    final storedServings = (log['servings'] as num?)?.toDouble();
+
+    String quantityText;
+
+    if (sodiumBasis == 'per_100g' && storedServings != null) {
+      final grams = storedServings * 100;
+
+      quantityText = '${grams.toStringAsFixed(
+        grams % 1 == 0 ? 0 : 1,
+      )} g consumed';
+    } else if (sodiumBasis == 'per_serving' && storedServings != null) {
+      quantityText = '${storedServings.toStringAsFixed(
+        storedServings % 1 == 0 ? 0 : 1,
+      )} serving${storedServings == 1 ? '' : 's'}';
+    } else {
+      quantityText = 'Quantity basis unavailable';
+    }
+
+    final indicatorColor = sodiumPer100g != null
+        ? SodiumRating.colorFor(
+            sodiumPer100g,
+          )
+        : Colors.grey;
 
     return Card(
       margin: const EdgeInsets.only(
         bottom: 10,
       ),
       child: ListTile(
+        isThreeLine: true,
         leading: CircleAvatar(
-          backgroundColor: Colors.redAccent.withValues(
-            alpha: 0.10,
+          backgroundColor: indicatorColor.withValues(
+            alpha: 0.12,
           ),
           child: Icon(
-            entryType == 'scanned' ? Icons.qr_code_scanner : Icons.restaurant,
-            color: Colors.redAccent,
+            sodiumPer100g != null
+                ? SodiumRating.iconFor(
+                    sodiumPer100g,
+                  )
+                : entryType == 'scanned'
+                    ? Icons.qr_code_scanner
+                    : Icons.help_outline,
+            color: indicatorColor,
           ),
         ),
         title: Text(
@@ -705,9 +795,40 @@ class _FoodLogPageState extends State<FoodLogPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        subtitle: Text(
-          '${grams.toStringAsFixed(grams % 1 == 0 ? 0 : 1)} g consumed'
-          ' • ${entryType == 'scanned' ? 'Scanned' : 'Food entry'}',
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              height: 2,
+            ),
+            Text(
+              '$quantityText • '
+              '${_entryTypeLabel(entryType)}',
+            ),
+            const SizedBox(
+              height: 3,
+            ),
+            if (sodiumPer100g != null)
+              Text(
+                '${SodiumRating.labelFor(sodiumPer100g)}'
+                ' • ${sodiumPer100g.round()} mg/100 g',
+                style: TextStyle(
+                  color: SodiumRating.colorFor(
+                    sodiumPer100g,
+                  ),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              )
+            else
+              Text(
+                'Sodium basis unavailable',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 11,
+                ),
+              ),
+          ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
