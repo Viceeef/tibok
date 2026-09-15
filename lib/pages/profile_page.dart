@@ -13,6 +13,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
+
   String? _errorMessage;
 
   Map<String, dynamic>? _profile;
@@ -21,6 +22,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+
     _loadProfile();
   }
 
@@ -36,18 +38,25 @@ class _ProfilePageState extends State<ProfilePage> {
       final user = SupabaseService.currentUser;
 
       if (user == null) {
-        throw Exception('You must be logged in.');
+        throw Exception(
+          'You must be logged in.',
+        );
       }
 
       final profileResponse = await SupabaseService.client
           .from('profiles')
           .select()
-          .eq('id', user.id)
+          .eq(
+            'id',
+            user.id,
+          )
           .maybeSingle();
 
       final healthProfile = await SupabaseService.getHealthProfile();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _profile = profileResponse;
@@ -55,7 +64,9 @@ class _ProfilePageState extends State<ProfilePage> {
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _errorMessage = e.toString();
@@ -104,7 +115,9 @@ class _ProfilePageState extends State<ProfilePage> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return StatefulBuilder(
           builder: (
             context,
@@ -128,7 +141,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(
+                      height: 14,
+                    ),
                     InputDecorator(
                       decoration: const InputDecoration(
                         labelText: 'Email',
@@ -146,11 +161,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: saving
                       ? null
                       : () {
-                          Navigator.pop(
+                          Navigator.of(
                             dialogContext,
-                          );
+                          ).pop();
                         },
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                  ),
                 ),
                 FilledButton(
                   onPressed: saving
@@ -165,9 +182,11 @@ class _ProfilePageState extends State<ProfilePage> {
                             return;
                           }
 
-                          setDialogState(() {
-                            saving = true;
-                          });
+                          setDialogState(
+                            () {
+                              saving = true;
+                            },
+                          );
 
                           try {
                             final user = SupabaseService.currentUser;
@@ -179,7 +198,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             }
 
                             await SupabaseService.client
-                                .from('profiles')
+                                .from(
+                              'profiles',
+                            )
                                 .update({
                               'username': username,
                             }).eq(
@@ -191,26 +212,28 @@ class _ProfilePageState extends State<ProfilePage> {
                               return;
                             }
 
-                            Navigator.pop(
+                            Navigator.of(
                               dialogContext,
-                            );
+                            ).pop();
 
                             _showMessage(
                               'Profile updated.',
                             );
 
                             await _loadProfile();
-                          } catch (e) {
+                          } catch (_) {
                             if (!dialogContext.mounted) {
                               return;
                             }
 
-                            setDialogState(() {
-                              saving = false;
-                            });
+                            setDialogState(
+                              () {
+                                saving = false;
+                              },
+                            );
 
                             _showMessage(
-                              'Could not update profile: $e',
+                              'Could not update profile.',
                             );
                           }
                         },
@@ -233,7 +256,332 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
 
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 350,
+      ),
+    );
+
     usernameController.dispose();
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    final currentPasswordController = TextEditingController();
+
+    final newPasswordController = TextEditingController();
+
+    final confirmPasswordController = TextEditingController();
+
+    bool saving = false;
+
+    bool hideCurrent = true;
+    bool hideNew = true;
+    bool hideConfirm = true;
+
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (
+        dialogContext,
+      ) {
+        return StatefulBuilder(
+          builder: (
+            context,
+            setDialogState,
+          ) {
+            return AlertDialog(
+              title: const Text(
+                'Change Password',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: currentPasswordController,
+                      enabled: !saving,
+                      obscureText: hideCurrent,
+                      decoration: InputDecoration(
+                        labelText: 'Current Password',
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setDialogState(
+                              () {
+                                hideCurrent = !hideCurrent;
+                              },
+                            );
+                          },
+                          icon: Icon(
+                            hideCurrent
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 14,
+                    ),
+                    TextField(
+                      controller: newPasswordController,
+                      enabled: !saving,
+                      obscureText: hideNew,
+                      decoration: InputDecoration(
+                        labelText: 'New Password',
+                        prefixIcon: const Icon(
+                          Icons.lock_reset,
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setDialogState(
+                              () {
+                                hideNew = !hideNew;
+                              },
+                            );
+                          },
+                          icon: Icon(
+                            hideNew
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 14,
+                    ),
+                    TextField(
+                      controller: confirmPasswordController,
+                      enabled: !saving,
+                      obscureText: hideConfirm,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm New Password',
+                        prefixIcon: const Icon(
+                          Icons.lock_reset,
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setDialogState(
+                              () {
+                                hideConfirm = !hideConfirm;
+                              },
+                            );
+                          },
+                          icon: Icon(
+                            hideConfirm
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 8,
+                    ),
+                    Text(
+                      'Use at least 8 characters.',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (dialogError != null) ...[
+                      const SizedBox(
+                        height: 12,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(
+                            alpha: 0.08,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            8,
+                          ),
+                        ),
+                        child: Text(
+                          dialogError!,
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving
+                      ? null
+                      : () {
+                          Navigator.of(
+                            dialogContext,
+                          ).pop();
+                        },
+                  child: const Text(
+                    'Cancel',
+                  ),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final currentPassword =
+                              currentPasswordController.text;
+
+                          final newPassword = newPasswordController.text;
+
+                          final confirmPassword =
+                              confirmPasswordController.text;
+
+                          if (currentPassword.isEmpty) {
+                            setDialogState(
+                              () {
+                                dialogError = 'Enter your current password.';
+                              },
+                            );
+                            return;
+                          }
+
+                          if (newPassword.length < 8) {
+                            setDialogState(
+                              () {
+                                dialogError =
+                                    'New password must contain at least 8 characters.';
+                              },
+                            );
+                            return;
+                          }
+
+                          if (newPassword == currentPassword) {
+                            setDialogState(
+                              () {
+                                dialogError =
+                                    'Choose a new password different from your current password.';
+                              },
+                            );
+                            return;
+                          }
+
+                          if (newPassword != confirmPassword) {
+                            setDialogState(
+                              () {
+                                dialogError = 'New passwords do not match.';
+                              },
+                            );
+                            return;
+                          }
+
+                          setDialogState(
+                            () {
+                              saving = true;
+                              dialogError = null;
+                            },
+                          );
+
+                          try {
+                            await SupabaseService.changePassword(
+                              currentPassword: currentPassword,
+                              newPassword: newPassword,
+                            );
+
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+
+                            Navigator.of(
+                              dialogContext,
+                            ).pop();
+
+                            _showMessage(
+                              'Password changed successfully.',
+                            );
+                          } catch (e) {
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+
+                            setDialogState(
+                              () {
+                                saving = false;
+                                dialogError = _passwordError(
+                                  e,
+                                );
+                              },
+                            );
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Change Password',
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 350,
+      ),
+    );
+
+    currentPasswordController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+  }
+
+  String _passwordError(
+    Object error,
+  ) {
+    final text = error.toString().toLowerCase();
+
+    if (text.contains(
+          'current password',
+        ) ||
+        text.contains(
+          'invalid password',
+        )) {
+      return 'The current password is incorrect.';
+    }
+
+    if (text.contains(
+      'same password',
+    )) {
+      return 'Choose a password different from your current password.';
+    }
+
+    if (text.contains(
+          'weak',
+        ) ||
+        text.contains(
+          'password should',
+        )) {
+      return 'The new password does not meet the account password requirements.';
+    }
+
+    return 'The password could not be changed. Check your current password and try again.';
   }
 
   Future<void> _showHealthProfile() async {
@@ -258,7 +606,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return AlertDialog(
           title: const Text(
             'Health Profile',
@@ -287,11 +637,13 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             FilledButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                );
+                ).pop();
               },
-              child: const Text('Close'),
+              child: const Text(
+                'Close',
+              ),
             ),
           ],
         );
@@ -331,24 +683,26 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showNotifications() async {
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return AlertDialog(
           title: const Text(
             'Notification Settings',
           ),
           content: const Text(
-            'Notification preferences are planned for a later Tibok update. '
-            'The current MVP focuses on sodium tracking, blood pressure '
-            'monitoring, and health resources.',
+            'Notification preferences are not enabled in this version of Tibok.',
           ),
           actions: [
             FilledButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                );
+                ).pop();
               },
-              child: const Text('Close'),
+              child: const Text(
+                'Close',
+              ),
             ),
           ],
         );
@@ -359,7 +713,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showHelp() async {
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return AlertDialog(
           title: const Text(
             'Help & Support',
@@ -374,31 +730,41 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(
+                  height: 4,
+                ),
                 Text(
                   'Use Scan Food for packaged products or Add Food '
                   'for common meals and manual entries.',
                 ),
-                SizedBox(height: 16),
+                SizedBox(
+                  height: 16,
+                ),
                 Text(
                   'How do I record blood pressure?',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Open Blood Pressure and tap the plus button to '
-                  'record systolic, diastolic, and heart rate values.',
+                SizedBox(
+                  height: 4,
                 ),
-                SizedBox(height: 16),
+                Text(
+                  'Open Blood Pressure and use Log BP to record '
+                  'systolic, diastolic, and heart-rate values.',
+                ),
+                SizedBox(
+                  height: 16,
+                ),
                 Text(
                   'Where are health resources?',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(
+                  height: 4,
+                ),
                 Text(
                   'Open Health Resources to browse, bookmark, and '
                   'visit trusted external health information.',
@@ -409,11 +775,13 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             FilledButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                );
+                ).pop();
               },
-              child: const Text('Close'),
+              child: const Text(
+                'Close',
+              ),
             ),
           ],
         );
@@ -424,30 +792,90 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _showAbout() async {
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return AlertDialog(
           title: const Text(
             'About Tibok',
           ),
-          content: const Text(
-            'Tibok is a mobile health application designed to help users '
-            'monitor daily sodium intake and blood pressure, identify sodium '
-            'in foods, and access educational heart-health resources.\n\n'
-            'The application was developed by students from Silliman University '
-            'under the Bachelor of Science in Information Technology (BSIT-III) '
-            'program.\n\n'
-            'Lead Developer: Somoza\n'
-            'Technical Lead: Dan\n'
-            'Project Manager: Jae',
+          content: const SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tibok is a mobile health application designed to help '
+                  'users monitor daily sodium intake and blood pressure, '
+                  'identify sodium in foods, and access educational '
+                  'heart-health resources.',
+                ),
+                SizedBox(
+                  height: 18,
+                ),
+                Text(
+                  'The application was developed by students from '
+                  'Silliman University under the Bachelor of Science '
+                  'in Information Technology (BSIT-III) program.',
+                ),
+                SizedBox(
+                  height: 22,
+                ),
+                Text(
+                  'Lead Developer',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Seth Vicef Somoza',
+                ),
+                SizedBox(
+                  height: 14,
+                ),
+                Text(
+                  'Technical Lead',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Dan Joseph Sarabia',
+                ),
+                SizedBox(
+                  height: 14,
+                ),
+                Text(
+                  'Project Manager',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Jaelica Fabian',
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+                Text(
+                  'Bachelor of Science in Information Technology (BSIT-III)\n'
+                  'Silliman University',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             FilledButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                );
+                ).pop();
               },
-              child: const Text('Close'),
+              child: const Text(
+                'Close',
+              ),
             ),
           ],
         );
@@ -458,44 +886,59 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _handleLogout() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return AlertDialog(
-          title: const Text('Logout'),
+          title: const Text(
+            'Logout',
+          ),
           content: const Text(
             'Are you sure you want to log out of Tibok?',
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
+                ).pop(
                   false,
                 );
               },
-              child: const Text('Cancel'),
+              child: const Text(
+                'Cancel',
+              ),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.redAccent,
               ),
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
+                ).pop(
                   true,
                 );
               },
-              child: const Text('Logout'),
+              child: const Text(
+                'Logout',
+              ),
             ),
           ],
         );
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     await SupabaseService.signOut();
 
-    if (mounted && Navigator.canPop(context)) {
+    if (mounted &&
+        Navigator.canPop(
+          context,
+        )) {
       Navigator.popUntil(
         context,
         (route) => route.isFirst,
@@ -503,8 +946,12 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _showMessage(String message) {
-    if (!mounted) return;
+  void _showMessage(
+    String message,
+  ) {
+    if (!mounted) {
+      return;
+    }
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -516,10 +963,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text(
+          'Profile',
+        ),
       ),
       body: _buildBody(),
     );
@@ -535,7 +986,9 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_errorMessage != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(
+            24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -544,7 +997,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 size: 60,
                 color: Colors.redAccent,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(
+                height: 16,
+              ),
               const Text(
                 'Unable to load your profile.',
                 style: TextStyle(
@@ -552,12 +1007,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(
+                height: 8,
+              ),
               Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(
+                height: 16,
+              ),
               FilledButton.icon(
                 onPressed: _loadProfile,
                 icon: const Icon(
@@ -597,7 +1056,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(
+          height: 16,
+        ),
         Text(
           _username,
           textAlign: TextAlign.center,
@@ -606,7 +1067,9 @@ class _ProfilePageState extends State<ProfilePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(
+          height: 4,
+        ),
         Text(
           _email,
           textAlign: TextAlign.center,
@@ -614,7 +1077,9 @@ class _ProfilePageState extends State<ProfilePage> {
             color: Colors.grey.shade600,
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(
+          height: 18,
+        ),
         Center(
           child: OutlinedButton.icon(
             onPressed: _showEditProfileDialog,
@@ -626,7 +1091,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(
+          height: 28,
+        ),
         const Text(
           'Account & Health',
           style: TextStyle(
@@ -634,7 +1101,9 @@ class _ProfilePageState extends State<ProfilePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(
+          height: 8,
+        ),
         Card(
           child: Column(
             children: [
@@ -650,7 +1119,24 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 onTap: _showHealthProfile,
               ),
-              const Divider(height: 1),
+              const Divider(
+                height: 1,
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.lock_outline,
+                ),
+                title: const Text(
+                  'Change Password',
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                ),
+                onTap: _showChangePasswordDialog,
+              ),
+              const Divider(
+                height: 1,
+              ),
               ListTile(
                 leading: const Icon(
                   Icons.notifications_outlined,
@@ -666,7 +1152,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(
+          height: 22,
+        ),
         const Text(
           'Support',
           style: TextStyle(
@@ -674,7 +1162,9 @@ class _ProfilePageState extends State<ProfilePage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(
+          height: 8,
+        ),
         Card(
           child: Column(
             children: [
@@ -690,7 +1180,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 onTap: _showHelp,
               ),
-              const Divider(height: 1),
+              const Divider(
+                height: 1,
+              ),
               ListTile(
                 leading: const Icon(
                   Icons.info_outline,
@@ -706,7 +1198,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(
+          height: 28,
+        ),
         OutlinedButton.icon(
           onPressed: _handleLogout,
           icon: const Icon(
