@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/supabase_service.dart';
+import 'accessibility_settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -13,7 +14,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
-
   String? _errorMessage;
 
   Map<String, dynamic>? _profile;
@@ -60,7 +60,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
       setState(() {
         _profile = profileResponse;
+
         _healthProfile = healthProfile;
+
         _isLoading = false;
       });
     } catch (e) {
@@ -70,6 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       setState(() {
         _errorMessage = e.toString();
+
         _isLoading = false;
       });
     }
@@ -96,13 +99,20 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String get _initial {
-    final name = _username.trim();
-
-    if (name.isEmpty) {
+    if (_username.isEmpty) {
       return 'T';
     }
 
-    return name[0].toUpperCase();
+    return _username[0].toUpperCase();
+  }
+
+  Future<void> _openAccessibilitySettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AccessibilitySettingsPage(),
+      ),
+    );
   }
 
   Future<void> _showEditProfileDialog() async {
@@ -389,31 +399,21 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     Text(
                       'Use at least 8 characters.',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall,
                     ),
                     if (dialogError != null) ...[
                       const SizedBox(
                         height: 12,
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(
-                            alpha: 0.08,
-                          ),
-                          borderRadius: BorderRadius.circular(
-                            8,
-                          ),
-                        ),
-                        child: Text(
-                          dialogError!,
-                          style: const TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 12,
-                          ),
+                      Text(
+                        dialogError!,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.error,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -442,8 +442,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                           final newPassword = newPasswordController.text;
 
-                          final confirmPassword =
-                              confirmPasswordController.text;
+                          final confirmation = confirmPasswordController.text;
 
                           if (currentPassword.isEmpty) {
                             setDialogState(
@@ -468,13 +467,13 @@ class _ProfilePageState extends State<ProfilePage> {
                             setDialogState(
                               () {
                                 dialogError =
-                                    'Choose a new password different from your current password.';
+                                    'Choose a different new password.';
                               },
                             );
                             return;
                           }
 
-                          if (newPassword != confirmPassword) {
+                          if (newPassword != confirmation) {
                             setDialogState(
                               () {
                                 dialogError = 'New passwords do not match.';
@@ -558,6 +557,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final text = error.toString().toLowerCase();
 
     if (text.contains(
+          'invalid login credentials',
+        ) ||
+        text.contains(
           'current password',
         ) ||
         text.contains(
@@ -566,22 +568,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return 'The current password is incorrect.';
     }
 
-    if (text.contains(
-      'same password',
-    )) {
-      return 'Choose a password different from your current password.';
-    }
-
-    if (text.contains(
-          'weak',
-        ) ||
-        text.contains(
-          'password should',
-        )) {
-      return 'The new password does not meet the account password requirements.';
-    }
-
-    return 'The password could not be changed. Check your current password and try again.';
+    return 'The password could not be changed. Please try again.';
   }
 
   Future<void> _showHealthProfile() async {
@@ -596,7 +583,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     final age = profile['age']?.toString() ?? '—';
 
-    final hasHypertension = profile['has_hypertension'] == true;
+    final hypertension = profile['has_hypertension'] == true ? 'Yes' : 'No';
 
     final systolic = profile['baseline_systolic']?.toString() ?? '—';
 
@@ -613,26 +600,29 @@ class _ProfilePageState extends State<ProfilePage> {
           title: const Text(
             'Health Profile',
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInfoRow(
-                'Age',
-                age,
-              ),
-              _buildInfoRow(
-                'Hypertension',
-                hasHypertension ? 'Yes' : 'No',
-              ),
-              _buildInfoRow(
-                'Baseline BP',
-                '$systolic / $diastolic mmHg',
-              ),
-              _buildInfoRow(
-                'Daily Sodium Limit',
-                '$sodiumLimit mg',
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildInfoBlock(
+                  'Age',
+                  age,
+                ),
+                _buildInfoBlock(
+                  'Hypertension',
+                  hypertension,
+                ),
+                _buildInfoBlock(
+                  'Baseline Blood Pressure',
+                  '$systolic / $diastolic mmHg',
+                ),
+                _buildInfoBlock(
+                  'Daily Sodium Limit',
+                  '$sodiumLimit mg',
+                ),
+              ],
+            ),
           ),
           actions: [
             FilledButton(
@@ -651,29 +641,27 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildInfoRow(
+  Widget _buildInfoBlock(
     String label,
     String value,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 8,
+      padding: const EdgeInsets.only(
+        bottom: 16,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-              ),
-            ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(
+            height: 3,
           ),
           Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
         ],
       ),
@@ -688,7 +676,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ) {
         return AlertDialog(
           title: const Text(
-            'Notification Settings',
+            'Notifications',
           ),
           content: const Text(
             'Notification preferences are not enabled in this version of Tibok.',
@@ -731,14 +719,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 SizedBox(
-                  height: 4,
+                  height: 5,
                 ),
                 Text(
-                  'Use Scan Food for packaged products or Add Food '
-                  'for common meals and manual entries.',
+                  'Use Scan Food for packaged products or Add Food for common meals and manual entries.',
                 ),
                 SizedBox(
-                  height: 16,
+                  height: 18,
                 ),
                 Text(
                   'How do I record blood pressure?',
@@ -747,14 +734,28 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 SizedBox(
-                  height: 4,
+                  height: 5,
                 ),
                 Text(
-                  'Open Blood Pressure and use Log BP to record '
-                  'systolic, diastolic, and heart-rate values.',
+                  'Open Blood Pressure and use Log BP to record systolic, diastolic, and heart-rate values.',
                 ),
                 SizedBox(
-                  height: 16,
+                  height: 18,
+                ),
+                Text(
+                  'Can I make Tibok easier to read?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(
+                  height: 5,
+                ),
+                Text(
+                  'Yes. Open Profile → Accessibility & Display and choose Standard, Large, or Extra Large text.',
+                ),
+                SizedBox(
+                  height: 18,
                 ),
                 Text(
                   'Where are health resources?',
@@ -763,11 +764,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 SizedBox(
-                  height: 4,
+                  height: 5,
                 ),
                 Text(
-                  'Open Health Resources to browse, bookmark, and '
-                  'visit trusted external health information.',
+                  'Open Health Resources to browse, bookmark, and visit trusted external health information.',
                 ),
               ],
             ),
@@ -804,18 +804,13 @@ class _ProfilePageState extends State<ProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tibok is a mobile health application designed to help '
-                  'users monitor daily sodium intake and blood pressure, '
-                  'identify sodium in foods, and access educational '
-                  'heart-health resources.',
+                  'Tibok is a mobile health application designed to help users monitor daily sodium intake and blood pressure, identify sodium in foods, and access educational heart-health resources.',
                 ),
                 SizedBox(
                   height: 18,
                 ),
                 Text(
-                  'The application was developed by students from '
-                  'Silliman University under the Bachelor of Science '
-                  'in Information Technology (BSIT-III) program.',
+                  'The application was developed by students from Silliman University under the Bachelor of Science in Information Technology (BSIT-III) program.',
                 ),
                 SizedBox(
                   height: 22,
@@ -910,9 +905,6 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-              ),
               onPressed: () {
                 Navigator.of(
                   dialogContext,
@@ -935,10 +927,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
     await SupabaseService.signOut();
 
-    if (mounted &&
-        Navigator.canPop(
-          context,
-        )) {
+    if (!mounted) {
+      return;
+    }
+
+    if (Navigator.canPop(
+      context,
+    )) {
       Navigator.popUntil(
         context,
         (route) => route.isFirst,
@@ -992,30 +987,25 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
-                size: 60,
-                color: Colors.redAccent,
+                size: 58,
+                color: Theme.of(
+                  context,
+                ).colorScheme.error,
               ),
               const SizedBox(
-                height: 16,
-              ),
-              const Text(
-                'Unable to load your profile.',
-                style: TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(
-                height: 8,
+                height: 14,
               ),
               Text(
-                _errorMessage!,
+                'Unable to load your profile.',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(
-                height: 16,
+                height: 18,
               ),
               FilledButton.icon(
                 onPressed: _loadProfile,
@@ -1032,167 +1022,160 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
+    final colors = Theme.of(context).colorScheme;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        20,
-        24,
-        20,
-        30,
+        18,
+        12,
+        18,
+        32,
       ),
       children: [
-        Center(
-          child: CircleAvatar(
-            radius: 52,
-            backgroundColor: Colors.redAccent.withValues(
-              alpha: 0.12,
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(
+              22,
             ),
-            child: Text(
-              _initial,
-              style: const TextStyle(
-                fontSize: 38,
-                fontWeight: FontWeight.bold,
-                color: Colors.redAccent,
-              ),
+            child: Column(
+              children: [
+                Container(
+                  width: 92,
+                  height: 92,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    _initial,
+                    style: TextStyle(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w800,
+                      color: colors.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 14,
+                ),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    _username,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.headlineSmall,
+                  ),
+                ),
+                const SizedBox(
+                  height: 4,
+                ),
+                Text(
+                  _email,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(
+                  height: 16,
+                ),
+                OutlinedButton.icon(
+                  onPressed: _showEditProfileDialog,
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                  ),
+                  label: const Text(
+                    'Edit Profile',
+                  ),
+                ),
+              ],
             ),
           ),
         ),
         const SizedBox(
-          height: 16,
+          height: 26,
         ),
-        Text(
-          _username,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(
-          height: 4,
-        ),
-        Text(
-          _email,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(
-          height: 18,
-        ),
-        Center(
-          child: OutlinedButton.icon(
-            onPressed: _showEditProfileDialog,
-            icon: const Icon(
-              Icons.edit_outlined,
-            ),
-            label: const Text(
-              'Edit Profile',
-            ),
-          ),
-        ),
-        const SizedBox(
-          height: 28,
-        ),
-        const Text(
+        _sectionTitle(
           'Account & Health',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
         ),
         const SizedBox(
-          height: 8,
+          height: 9,
         ),
         Card(
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.favorite_outline,
-                ),
-                title: const Text(
-                  'Health Profile',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
+              _profileTile(
+                icon: Icons.favorite_outline,
+                title: 'Health Profile',
+                subtitle: 'Health details and sodium target',
                 onTap: _showHealthProfile,
               ),
-              const Divider(
-                height: 1,
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.lock_outline,
-                ),
-                title: const Text(
-                  'Change Password',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
+              const Divider(),
+              _profileTile(
+                icon: Icons.lock_outline,
+                title: 'Change Password',
+                subtitle: 'Update your account password',
                 onTap: _showChangePasswordDialog,
               ),
-              const Divider(
-                height: 1,
+            ],
+          ),
+        ),
+        const SizedBox(
+          height: 24,
+        ),
+        _sectionTitle(
+          'Preferences',
+        ),
+        const SizedBox(
+          height: 9,
+        ),
+        Card(
+          child: Column(
+            children: [
+              _profileTile(
+                icon: Icons.accessibility_new_rounded,
+                title: 'Accessibility & Display',
+                subtitle: 'Text size and readability',
+                onTap: _openAccessibilitySettings,
               ),
-              ListTile(
-                leading: const Icon(
-                  Icons.notifications_outlined,
-                ),
-                title: const Text(
-                  'Notification Settings',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
+              const Divider(),
+              _profileTile(
+                icon: Icons.notifications_outlined,
+                title: 'Notifications',
+                subtitle: 'Notification preferences',
                 onTap: _showNotifications,
               ),
             ],
           ),
         ),
         const SizedBox(
-          height: 22,
+          height: 24,
         ),
-        const Text(
+        _sectionTitle(
           'Support',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
         ),
         const SizedBox(
-          height: 8,
+          height: 9,
         ),
         Card(
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.help_outline,
-                ),
-                title: const Text(
-                  'Help & Support',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
+              _profileTile(
+                icon: Icons.help_outline,
+                title: 'Help & Support',
+                subtitle: 'How to use Tibok',
                 onTap: _showHelp,
               ),
-              const Divider(
-                height: 1,
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.info_outline,
-                ),
-                title: const Text(
-                  'About Tibok',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
+              const Divider(),
+              _profileTile(
+                icon: Icons.info_outline,
+                title: 'About Tibok',
+                subtitle: 'Project and development team',
                 onTap: _showAbout,
               ),
             ],
@@ -1210,16 +1193,60 @@ class _ProfilePageState extends State<ProfilePage> {
             'Logout',
           ),
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.redAccent,
-            side: const BorderSide(
-              color: Colors.redAccent,
-            ),
-            padding: const EdgeInsets.symmetric(
-              vertical: 15,
+            foregroundColor: colors.error,
+            side: BorderSide(
+              color: colors.error,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _sectionTitle(
+    String title,
+  ) {
+    return Semantics(
+      header: true,
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
+  }
+
+  Widget _profileTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(
+            12,
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.onPrimaryContainer,
+        ),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: Text(subtitle),
+      trailing: const Icon(
+        Icons.chevron_right,
+      ),
+      onTap: onTap,
     );
   }
 }

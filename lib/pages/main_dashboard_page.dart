@@ -18,8 +18,32 @@ class MainDashboardPage extends StatefulWidget {
 class _MainDashboardPageState extends State<MainDashboardPage> {
   int _selectedIndex = 0;
 
-  void _selectTab(int index) {
-    if (_selectedIndex == index) {
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _pages = [
+      HomePage(
+        onOpenFoodLog: () {
+          _selectTab(1);
+        },
+        onOpenBloodPressure: () {
+          _selectTab(2);
+        },
+      ),
+      const FoodLogPage(),
+      const BloodPressurePage(),
+      const ResourcesPage(),
+      const ProfilePage(),
+    ];
+  }
+
+  void _selectTab(
+    int index,
+  ) {
+    if (index < 0 || index >= _pages.length || _selectedIndex == index) {
       return;
     }
 
@@ -28,96 +52,77 @@ class _MainDashboardPageState extends State<MainDashboardPage> {
     });
   }
 
-  Widget _buildSelectedPage() {
-    switch (_selectedIndex) {
-      case 0:
-        return HomePage(
-          onOpenFoodLog: () {
-            _selectTab(1);
-          },
-          onOpenBloodPressure: () {
-            _selectTab(2);
-          },
-        );
-
-      case 1:
-        return const FoodLogPage();
-
-      case 2:
-        return const BloodPressurePage();
-
-      case 3:
-        return const ResourcesPage();
-
-      case 4:
-        return const ProfilePage();
-
-      default:
-        return HomePage(
-          onOpenFoodLog: () {
-            _selectTab(1);
-          },
-          onOpenBloodPressure: () {
-            _selectTab(2);
-          },
-        );
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: _buildSelectedPage(),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _selectTab,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(
-              Icons.home_outlined,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border(
+            top: BorderSide(
+              color: colors.outlineVariant,
             ),
-            selectedIcon: Icon(
-              Icons.home,
-            ),
-            label: 'Home',
           ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.restaurant_menu_outlined,
+        ),
+        child: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: _selectTab,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(
+                Icons.home_outlined,
+              ),
+              selectedIcon: Icon(
+                Icons.home_rounded,
+              ),
+              label: 'Home',
             ),
-            selectedIcon: Icon(
-              Icons.restaurant_menu,
+            NavigationDestination(
+              icon: Icon(
+                Icons.restaurant_menu_outlined,
+              ),
+              selectedIcon: Icon(
+                Icons.restaurant_menu,
+              ),
+              label: 'Food Log',
             ),
-            label: 'Food Log',
-          ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.favorite_outline,
+            NavigationDestination(
+              icon: Icon(
+                Icons.favorite_border_rounded,
+              ),
+              selectedIcon: Icon(
+                Icons.favorite_rounded,
+              ),
+              label: 'BP',
             ),
-            selectedIcon: Icon(
-              Icons.favorite,
+            NavigationDestination(
+              icon: Icon(
+                Icons.menu_book_outlined,
+              ),
+              selectedIcon: Icon(
+                Icons.menu_book_rounded,
+              ),
+              label: 'Resources',
             ),
-            label: 'BP',
-          ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.menu_book_outlined,
+            NavigationDestination(
+              icon: Icon(
+                Icons.person_outline,
+              ),
+              selectedIcon: Icon(
+                Icons.person_rounded,
+              ),
+              label: 'Profile',
             ),
-            selectedIcon: Icon(
-              Icons.menu_book,
-            ),
-            label: 'Resources',
-          ),
-          NavigationDestination(
-            icon: Icon(
-              Icons.person_outline,
-            ),
-            selectedIcon: Icon(
-              Icons.person,
-            ),
-            label: 'Profile',
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

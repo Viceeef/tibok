@@ -5,10 +5,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'pages/auth_gate.dart';
 import 'pages/reset_password_page.dart';
+import 'services/app_settings_service.dart';
 import 'services/supabase_service.dart';
+import 'theme/tibok_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await AppSettingsController.instance.load();
+  } catch (e) {
+    debugPrint(
+      'App settings initialization error: $e',
+    );
+  }
 
   try {
     await SupabaseService.initialize();
@@ -34,9 +44,6 @@ class TibokApp extends StatefulWidget {
 
 class _TibokAppState extends State<TibokApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>();
 
   StreamSubscription<AuthState>? _authSubscription;
 
@@ -108,6 +115,7 @@ class _TibokAppState extends State<TibokApp> {
   @override
   void dispose() {
     _authSubscription?.cancel();
+
     super.dispose();
   }
 
@@ -117,13 +125,44 @@ class _TibokAppState extends State<TibokApp> {
   ) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      scaffoldMessengerKey: _scaffoldMessengerKey,
       title: 'Tibok',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.redAccent,
-        useMaterial3: true,
-      ),
+      theme: TibokTheme.light,
+      builder: (
+        context,
+        child,
+      ) {
+        return AnimatedBuilder(
+          animation: AppSettingsController.instance,
+
+          // Keep the Navigator/widget tree stable.
+          child: child,
+
+          builder: (
+            context,
+            stableChild,
+          ) {
+            final mediaQuery = MediaQuery.of(context);
+
+            final settings = AppSettingsController.instance;
+
+            final systemScale = mediaQuery.textScaler.scale(
+              1.0,
+            );
+
+            final combinedScale = systemScale * settings.textScaleFactor;
+
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaler: TextScaler.linear(
+                  combinedScale,
+                ),
+              ),
+              child: stableChild ?? const SizedBox.shrink(),
+            );
+          },
+        );
+      },
       home: const AuthGate(),
     );
   }
