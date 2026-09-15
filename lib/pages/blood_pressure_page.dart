@@ -16,12 +16,12 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
   final BloodPressureService _service = BloodPressureService();
 
   bool _isLoading = true;
-  bool _showTrends = false;
-  bool _show30Days = false;
-
   String? _errorMessage;
 
   List<Map<String, dynamic>> _readings = [];
+
+  String _viewMode = 'List';
+  int _trendDays = 7;
 
   @override
   void initState() {
@@ -56,13 +56,70 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
     }
   }
 
+  DateTime? _readingDate(
+    Map<String, dynamic> reading,
+  ) {
+    final value = reading['logged_at']?.toString();
+
+    if (value == null) return null;
+
+    return DateTime.tryParse(value)?.toLocal();
+  }
+
+  List<Map<String, dynamic>> get _filteredTrendReadings {
+    final cutoff = DateTime.now().subtract(
+      Duration(days: _trendDays),
+    );
+
+    final filtered = _readings.where(
+      (reading) {
+        final date = _readingDate(reading);
+
+        if (date == null) return false;
+
+        return date.isAfter(cutoff) || _isSameDay(date, cutoff);
+      },
+    ).toList();
+
+    filtered.sort(
+      (a, b) {
+        final aDate = _readingDate(a) ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+        final bDate = _readingDate(b) ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+        return aDate.compareTo(bDate);
+      },
+    );
+
+    return filtered;
+  }
+
+  bool _isSameDay(
+    DateTime a,
+    DateTime b,
+  ) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Map<String, dynamic>? get _latestReading {
+    if (_readings.isEmpty) {
+      return null;
+    }
+
+    return _readings.first;
+  }
+
   Future<void> _showAddReadingDialog() async {
     final systolicController = TextEditingController();
+
     final diastolicController = TextEditingController();
+
     final heartRateController = TextEditingController();
+
     final notesController = TextEditingController();
 
     bool saving = false;
+    String? dialogError;
 
     await showDialog<void>(
       context: context,
@@ -82,10 +139,6 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Enter your blood pressure and heart rate reading.',
-                    ),
-                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
@@ -95,13 +148,14 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(
                               labelText: 'Systolic',
-                              hintText: '120',
                               suffixText: 'mmHg',
                               border: OutlineInputBorder(),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(
+                          width: 10,
+                        ),
                         Expanded(
                           child: TextField(
                             controller: diastolicController,
@@ -109,7 +163,6 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(
                               labelText: 'Diastolic',
-                              hintText: '80',
                               suffixText: 'mmHg',
                               border: OutlineInputBorder(),
                             ),
@@ -124,7 +177,6 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Heart Rate',
-                        hintText: '72',
                         suffixText: 'bpm',
                         border: OutlineInputBorder(),
                       ),
@@ -133,11 +185,32 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                     TextField(
                       controller: notesController,
                       enabled: !saving,
-                      maxLines: 3,
+                      minLines: 2,
+                      maxLines: 4,
                       decoration: const InputDecoration(
                         labelText: 'Notes (optional)',
-                        hintText: 'e.g. After breakfast',
                         border: OutlineInputBorder(),
+                      ),
+                    ),
+                    if (dialogError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        dialogError!,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Text(
+                      'Blood pressure categories are provided for '
+                      'tracking purposes and a single reading does '
+                      'not establish a diagnosis.',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        height: 1.35,
                       ),
                     ),
                   ],
@@ -148,7 +221,9 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                   onPressed: saving
                       ? null
                       : () {
-                          Navigator.pop(dialogContext);
+                          Navigator.pop(
+                            dialogContext,
+                          );
                         },
                   child: const Text('Cancel'),
                 ),
@@ -171,14 +246,16 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                           if (systolic == null ||
                               diastolic == null ||
                               heartRate == null) {
-                            _showMessage(
-                              'Please enter valid systolic, diastolic, and heart rate values.',
-                            );
+                            setDialogState(() {
+                              dialogError =
+                                  'Enter valid numeric values for all required fields.';
+                            });
                             return;
                           }
 
                           setDialogState(() {
                             saving = true;
+                            dialogError = null;
                           });
 
                           try {
@@ -193,13 +270,15 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                               return;
                             }
 
-                            Navigator.pop(dialogContext);
-
-                            _showMessage(
-                              'Blood pressure reading saved.',
+                            Navigator.pop(
+                              dialogContext,
                             );
 
                             await _loadReadings();
+
+                            _showMessage(
+                              'Blood pressure saved.',
+                            );
                           } catch (e) {
                             if (!dialogContext.mounted) {
                               return;
@@ -207,14 +286,11 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
 
                             setDialogState(() {
                               saving = false;
-                            });
-
-                            _showMessage(
-                              e.toString().replaceFirst(
+                              dialogError = e.toString().replaceFirst(
                                     'Exception: ',
                                     '',
-                                  ),
-                            );
+                                  );
+                            });
                           }
                         },
                   child: saving
@@ -225,7 +301,9 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text('Save Reading'),
+                      : const Text(
+                          'Save Reading',
+                        ),
                 ),
               ],
             );
@@ -247,9 +325,11 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete Reading'),
+          title: const Text(
+            'Delete Reading',
+          ),
           content: const Text(
-            'Are you sure you want to delete this blood pressure reading?',
+            'Remove this blood pressure reading?',
           ),
           actions: [
             TextButton(
@@ -285,11 +365,11 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
         reading['id'].toString(),
       );
 
-      _showMessage(
-        'Blood pressure reading deleted.',
-      );
-
       await _loadReadings();
+
+      _showMessage(
+        'Reading deleted.',
+      );
     } catch (e) {
       _showMessage(
         'Could not delete reading.',
@@ -311,31 +391,54 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
       );
   }
 
-  DateTime? _parsePhilippineTime(
-    dynamic value,
+  Color _categoryColor(
+    String category,
   ) {
-    if (value == null) return null;
+    switch (category) {
+      case 'Normal':
+        return Colors.green;
 
-    final parsed = DateTime.tryParse(
-      value.toString(),
-    );
+      case 'Elevated':
+        return Colors.amber.shade700;
 
-    if (parsed == null) return null;
+      case 'Stage 1 Hypertension':
+        return Colors.orange;
 
-    return parsed.toUtc().add(
-          const Duration(hours: 8),
-        );
+      case 'Stage 2 Hypertension':
+        return Colors.deepOrange;
+
+      case 'Severe Hypertension':
+        return Colors.red.shade800;
+
+      default:
+        return Colors.grey;
+    }
   }
 
-  String _formatDateTime(
-    dynamic value,
+  String _shortDate(
+    DateTime date,
   ) {
-    final date = _parsePhilippineTime(value);
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
 
-    if (date == null) {
-      return '';
-    }
+    return '${months[date.month - 1]} ${date.day}';
+  }
 
+  String _fullDate(
+    DateTime date,
+  ) {
     const months = [
       'Jan',
       'Feb',
@@ -364,72 +467,8 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
 
     final period = date.hour >= 12 ? 'PM' : 'AM';
 
-    return '${months[date.month - 1]} '
-        '${date.day}, ${date.year}, '
-        '$hour:$minute $period';
-  }
-
-  Color _categoryColor(
-    String category,
-  ) {
-    switch (category.toLowerCase()) {
-      case 'normal':
-        return Colors.green;
-
-      case 'elevated':
-        return Colors.orange;
-
-      default:
-        return Colors.redAccent;
-    }
-  }
-
-  List<Map<String, dynamic>> get _filteredChartReadings {
-    final now = DateTime.now().toUtc().add(
-          const Duration(hours: 8),
-        );
-
-    final days = _show30Days ? 30 : 7;
-
-    final cutoff = now.subtract(
-      Duration(days: days),
-    );
-
-    final filtered = _readings.where((reading) {
-      final date = _parsePhilippineTime(
-        reading['logged_at'],
-      );
-
-      if (date == null) return false;
-
-      return date.isAfter(cutoff);
-    }).toList();
-
-    filtered.sort((a, b) {
-      final aDate = _parsePhilippineTime(
-        a['logged_at'],
-      );
-
-      final bDate = _parsePhilippineTime(
-        b['logged_at'],
-      );
-
-      if (aDate == null || bDate == null) {
-        return 0;
-      }
-
-      return aDate.compareTo(bDate);
-    });
-
-    return filtered;
-  }
-
-  Map<String, dynamic>? get _latestReading {
-    if (_readings.isEmpty) {
-      return null;
-    }
-
-    return _readings.first;
+    return '${months[date.month - 1]} ${date.day}, '
+        '${date.year} • $hour:$minute $period';
   }
 
   @override
@@ -438,18 +477,27 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
   ) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _showTrends ? 'Blood Pressure Trends' : 'Blood Pressure History',
+        title: const Text(
+          'Blood Pressure',
         ),
         actions: [
           IconButton(
-            tooltip: 'Add Reading',
+            tooltip: 'Log Blood Pressure',
+            onPressed: _showAddReadingDialog,
             icon: const Icon(
               Icons.add,
             ),
-            onPressed: _showAddReadingDialog,
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddReadingDialog,
+        icon: const Icon(
+          Icons.add,
+        ),
+        label: const Text(
+          'Log BP',
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: _loadReadings,
@@ -475,38 +523,28 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
 
     if (_errorMessage != null) {
       return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
         children: [
-          const SizedBox(height: 120),
+          const SizedBox(height: 100),
           const Icon(
             Icons.error_outline,
-            size: 64,
+            size: 60,
             color: Colors.redAccent,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           const Text(
-            'Unable to load blood pressure records.',
+            'Unable to load blood pressure history.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 19,
               fontWeight: FontWeight.bold,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage!,
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _loadReadings,
-            icon: const Icon(
-              Icons.refresh,
-            ),
-            label: const Text(
-              'Try Again',
-            ),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try Again'),
           ),
         ],
       );
@@ -516,522 +554,49 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         16,
+        12,
         16,
-        16,
-        100,
+        90,
       ),
       children: [
-        _buildModeSelector(),
-        const SizedBox(height: 20),
-        if (_showTrends) _buildTrendsView() else _buildHistoryView(),
-      ],
-    );
-  }
-
-  Widget _buildModeSelector() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: FilledButton(
-              onPressed: () {
-                setState(() {
-                  _showTrends = false;
-                });
-              },
-              style: FilledButton.styleFrom(
-                elevation: 0,
-                backgroundColor:
-                    !_showTrends ? Colors.redAccent : Colors.transparent,
-                foregroundColor: !_showTrends ? Colors.white : Colors.black87,
+        if (_latestReading != null)
+          _buildLatestCard(
+            _latestReading!,
+          ),
+        if (_latestReading != null) const SizedBox(height: 16),
+        SegmentedButton<String>(
+          segments: const [
+            ButtonSegment(
+              value: 'List',
+              icon: Icon(
+                Icons.list_alt,
               ),
-              child: const Text('List'),
+              label: Text('History'),
             ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: FilledButton(
-              onPressed: () {
-                setState(() {
-                  _showTrends = true;
-                });
-              },
-              style: FilledButton.styleFrom(
-                elevation: 0,
-                backgroundColor:
-                    _showTrends ? Colors.redAccent : Colors.transparent,
-                foregroundColor: _showTrends ? Colors.white : Colors.black87,
+            ButtonSegment(
+              value: 'Trends',
+              icon: Icon(
+                Icons.show_chart,
               ),
-              child: const Text('Trends'),
+              label: Text('Trends'),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryView() {
-    if (_readings.isEmpty) {
-      return Column(
-        children: [
-          const SizedBox(height: 100),
-          Icon(
-            Icons.favorite_border,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No blood pressure readings yet',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Add your first reading to begin monitoring your blood pressure.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-            ),
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: _showAddReadingDialog,
-            icon: const Icon(Icons.add),
-            label: const Text(
-              'Log New Reading',
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        ..._readings.map(
-          (reading) {
-            final systolic = (reading['systolic'] as num?)?.toInt() ?? 0;
-
-            final diastolic = (reading['diastolic'] as num?)?.toInt() ?? 0;
-
-            final heartRate = (reading['heart_rate'] as num?)?.toInt() ?? 0;
-
-            final category = reading['category']?.toString() ?? 'Unknown';
-
-            final notes = reading['notes']?.toString();
-
-            final color = _categoryColor(
-              category,
-            );
-
-            return Card(
-              margin: const EdgeInsets.only(
-                bottom: 12,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(
-                  16,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _formatDateTime(
-                              reading['logged_at'],
-                            ),
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: color.withValues(
-                              alpha: 0.12,
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              20,
-                            ),
-                          ),
-                          child: Text(
-                            category,
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'delete') {
-                              _deleteReading(
-                                reading,
-                              );
-                            }
-                          },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text('Delete'),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$systolic / $diastolic',
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Padding(
-                          padding: EdgeInsets.only(
-                            bottom: 4,
-                          ),
-                          child: Text(
-                            'mmHg',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.favorite,
-                          size: 18,
-                          color: Colors.redAccent,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '$heartRate bpm',
-                        ),
-                      ],
-                    ),
-                    if (notes != null && notes.trim().isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        notes,
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
+          ],
+          selected: {
+            _viewMode,
           },
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: _showAddReadingDialog,
-          icon: const Icon(Icons.add),
-          label: const Text(
-            'Log New Reading',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTrendsView() {
-    final readings = _filteredChartReadings;
-
-    final latest = _latestReading;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildRangeSelector(),
-        const SizedBox(height: 24),
-        if (readings.length < 2)
-          _buildNotEnoughChartData()
-        else
-          _buildChart(readings),
-        const SizedBox(height: 24),
-        if (latest != null) _buildLatestReadingCard(latest),
-      ],
-    );
-  }
-
-  Widget _buildRangeSelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ChoiceChip(
-          label: const Text('7D'),
-          selected: !_show30Days,
-          onSelected: (_) {
+          onSelectionChanged: (selection) {
             setState(() {
-              _show30Days = false;
+              _viewMode = selection.first;
             });
           },
         ),
-        const SizedBox(width: 12),
-        ChoiceChip(
-          label: const Text('30D'),
-          selected: _show30Days,
-          onSelected: (_) {
-            setState(() {
-              _show30Days = true;
-            });
-          },
-        ),
+        const SizedBox(height: 18),
+        if (_viewMode == 'List') _buildHistory() else _buildTrends(),
       ],
     );
   }
 
-  Widget _buildNotEnoughChartData() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          children: [
-            Icon(
-              Icons.show_chart,
-              size: 52,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'More readings needed',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Add at least two blood pressure readings to display a trend chart.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChart(
-    List<Map<String, dynamic>> readings,
-  ) {
-    final systolicSpots = <FlSpot>[];
-    final diastolicSpots = <FlSpot>[];
-
-    for (var index = 0; index < readings.length; index++) {
-      final reading = readings[index];
-
-      final systolic = (reading['systolic'] as num?)?.toDouble();
-
-      final diastolic = (reading['diastolic'] as num?)?.toDouble();
-
-      if (systolic == null || diastolic == null) {
-        continue;
-      }
-
-      systolicSpots.add(
-        FlSpot(
-          index.toDouble(),
-          systolic,
-        ),
-      );
-
-      diastolicSpots.add(
-        FlSpot(
-          index.toDouble(),
-          diastolic,
-        ),
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          16,
-          20,
-          16,
-          16,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Blood Pressure Trend',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildLegend(
-                  Colors.redAccent,
-                  'Systolic',
-                ),
-                const SizedBox(width: 20),
-                _buildLegend(
-                  Colors.blue,
-                  'Diastolic',
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 250,
-              child: LineChart(
-                LineChartData(
-                  minY: 40,
-                  maxY: 200,
-                  gridData: const FlGridData(
-                    show: true,
-                  ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: Border.all(
-                      color: Colors.black12,
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: false,
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: false,
-                      ),
-                    ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 42,
-                        interval: 40,
-                      ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 32,
-                        interval: 1,
-                        getTitlesWidget: (
-                          value,
-                          meta,
-                        ) {
-                          final index = value.toInt();
-
-                          if (index < 0 || index >= readings.length) {
-                            return const SizedBox.shrink();
-                          }
-
-                          final date = _parsePhilippineTime(
-                            readings[index]['logged_at'],
-                          );
-
-                          if (date == null) {
-                            return const SizedBox.shrink();
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              top: 8,
-                            ),
-                            child: Text(
-                              '${date.day}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: systolicSpots,
-                      isCurved: true,
-                      color: Colors.redAccent,
-                      barWidth: 3,
-                      dotData: const FlDotData(
-                        show: true,
-                      ),
-                    ),
-                    LineChartBarData(
-                      spots: diastolicSpots,
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 3,
-                      dotData: const FlDotData(
-                        show: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegend(
-    Color color,
-    String label,
-  ) {
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(label),
-      ],
-    );
-  }
-
-  Widget _buildLatestReadingCard(
+  Widget _buildLatestCard(
     Map<String, dynamic> reading,
   ) {
     final systolic = (reading['systolic'] as num?)?.toInt() ?? 0;
@@ -1040,61 +605,37 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
 
     final heartRate = (reading['heart_rate'] as num?)?.toInt() ?? 0;
 
-    final category = reading['category']?.toString() ?? 'Unknown';
+    final category = reading['category']?.toString() ??
+        _service.classifyReading(
+          systolic: systolic,
+          diastolic: diastolic,
+        );
 
-    final color = _categoryColor(
-      category,
-    );
+    final date = _readingDate(reading);
+
+    final color = _categoryColor(category);
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(
-          18,
-        ),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Latest Reading',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$systolic / $diastolic mmHg',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$heartRate bpm',
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatDateTime(
-                          reading['logged_at'],
-                        ),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
+                const Expanded(
+                  child: Text(
+                    'Latest Reading',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: 10,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: color.withValues(
@@ -1108,14 +649,592 @@ class _BloodPressurePageState extends State<BloodPressurePage> {
                     category,
                     style: TextStyle(
                       color: color,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
                     ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$systolic/$diastolic',
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(
+                    left: 6,
+                    bottom: 5,
+                  ),
+                  child: Text(
+                    'mmHg',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Heart rate: $heartRate bpm',
+            ),
+            if (date != null) ...[
+              const SizedBox(height: 5),
+              Text(
+                _fullDate(date),
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Text(
+              'Category is based on the recorded reading. '
+              'A single measurement does not establish a diagnosis.',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHistory() {
+    if (_readings.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return Column(
+      children: _readings
+          .map(
+            _buildReadingCard,
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildReadingCard(
+    Map<String, dynamic> reading,
+  ) {
+    final systolic = (reading['systolic'] as num?)?.toInt() ?? 0;
+
+    final diastolic = (reading['diastolic'] as num?)?.toInt() ?? 0;
+
+    final heartRate = (reading['heart_rate'] as num?)?.toInt() ?? 0;
+
+    final category = reading['category']?.toString() ??
+        _service.classifyReading(
+          systolic: systolic,
+          diastolic: diastolic,
+        );
+
+    final notes = reading['notes']?.toString();
+
+    final date = _readingDate(reading);
+
+    final color = _categoryColor(category);
+
+    return Card(
+      margin: const EdgeInsets.only(
+        bottom: 10,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 6,
+              height: 75,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(
+                  10,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$systolic/$diastolic mmHg',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$category • $heartRate bpm',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (date != null) ...[
+                    const SizedBox(
+                      height: 4,
+                    ),
+                    Text(
+                      _fullDate(date),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  if (notes != null && notes.trim().isNotEmpty) ...[
+                    const SizedBox(
+                      height: 6,
+                    ),
+                    Text(
+                      notes,
+                      style: const TextStyle(
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Delete reading',
+              onPressed: () {
+                _deleteReading(
+                  reading,
+                );
+              },
+              icon: const Icon(
+                Icons.delete_outline,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrends() {
+    final readings = _filteredTrendReadings;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Blood Pressure Trends',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(
+                  value: 7,
+                  label: Text('7D'),
+                ),
+                ButtonSegment(
+                  value: 30,
+                  label: Text('30D'),
+                ),
+              ],
+              selected: {
+                _trendDays,
+              },
+              onSelectionChanged: (selection) {
+                setState(() {
+                  _trendDays = selection.first;
+                });
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Systolic and diastolic pressure over time',
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 20),
+        if (readings.length < 2)
+          _buildNotEnoughChartData()
+        else
+          _buildChart(readings),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLegend(
+              color: Colors.redAccent,
+              label: 'Systolic',
+            ),
+            const SizedBox(width: 20),
+            _buildLegend(
+              color: Colors.blueAccent,
+              label: 'Diastolic',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegend({
+    required Color color,
+    required String label,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label),
+      ],
+    );
+  }
+
+  Widget _buildChart(
+    List<Map<String, dynamic>> readings,
+  ) {
+    final systolicSpots = <FlSpot>[];
+
+    final diastolicSpots = <FlSpot>[];
+
+    var minPressure = 300.0;
+    var maxPressure = 0.0;
+
+    for (var i = 0; i < readings.length; i++) {
+      final systolic = (readings[i]['systolic'] as num).toDouble();
+
+      final diastolic = (readings[i]['diastolic'] as num).toDouble();
+
+      systolicSpots.add(
+        FlSpot(
+          i.toDouble(),
+          systolic,
+        ),
+      );
+
+      diastolicSpots.add(
+        FlSpot(
+          i.toDouble(),
+          diastolic,
+        ),
+      );
+
+      if (diastolic < minPressure) {
+        minPressure = diastolic;
+      }
+
+      if (systolic > maxPressure) {
+        maxPressure = systolic;
+      }
+    }
+
+    var minY = ((minPressure - 20) / 10).floor() * 10.0;
+
+    var maxY = ((maxPressure + 20) / 10).ceil() * 10.0;
+
+    if (minY < 30) {
+      minY = 30;
+    }
+
+    if (maxY <= minY) {
+      maxY = minY + 40;
+    }
+
+    final interval = readings.length > 8 ? 2 : 1;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          12,
+          20,
+          18,
+          12,
+        ),
+        child: SizedBox(
+          height: 330,
+          child: LineChart(
+            LineChartData(
+              minX: 0,
+              maxX: (readings.length - 1).toDouble(),
+              minY: minY,
+              maxY: maxY,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: 20,
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: const Border(
+                  left: BorderSide(
+                    color: Colors.black26,
+                  ),
+                  bottom: BorderSide(
+                    color: Colors.black26,
+                  ),
+                ),
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: false,
+                  ),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: false,
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  axisNameWidget: const Padding(
+                    padding: EdgeInsets.only(
+                      bottom: 6,
+                    ),
+                    child: Text(
+                      'mmHg',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  axisNameSize: 24,
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 42,
+                    interval: 20,
+                    getTitlesWidget: (
+                      value,
+                      meta,
+                    ) {
+                      return SideTitleWidget(
+                        meta: meta,
+                        child: Text(
+                          value.toInt().toString(),
+                          style: const TextStyle(
+                            fontSize: 10,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  axisNameWidget: const Padding(
+                    padding: EdgeInsets.only(
+                      top: 8,
+                    ),
+                    child: Text(
+                      'Date',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  axisNameSize: 30,
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 44,
+                    interval: interval.toDouble(),
+                    getTitlesWidget: (
+                      value,
+                      meta,
+                    ) {
+                      final index = value.round();
+
+                      if (index < 0 || index >= readings.length) {
+                        return const SizedBox.shrink();
+                      }
+
+                      if (index % interval != 0) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final date = _readingDate(
+                        readings[index],
+                      );
+
+                      if (date == null) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return SideTitleWidget(
+                        meta: meta,
+                        child: Text(
+                          _shortDate(
+                            date,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 9,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              lineTouchData: LineTouchData(
+                enabled: true,
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipItems: (
+                    touchedSpots,
+                  ) {
+                    return touchedSpots.map(
+                      (spot) {
+                        final index = spot.x.round();
+
+                        if (index < 0 || index >= readings.length) {
+                          return null;
+                        }
+
+                        final date = _readingDate(
+                          readings[index],
+                        );
+
+                        final prefix = spot.barIndex == 0 ? 'SYS' : 'DIA';
+
+                        final dateText =
+                            date == null ? '' : '${_shortDate(date)}\n';
+
+                        return LineTooltipItem(
+                          '$dateText$prefix ${spot.y.toInt()} mmHg',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                      },
+                    ).toList();
+                  },
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: systolicSpots,
+                  isCurved: true,
+                  color: Colors.redAccent,
+                  barWidth: 3,
+                  dotData: const FlDotData(
+                    show: true,
+                  ),
+                  belowBarData: BarAreaData(
+                    show: false,
+                  ),
+                ),
+                LineChartBarData(
+                  spots: diastolicSpots,
+                  isCurved: true,
+                  color: Colors.blueAccent,
+                  barWidth: 3,
+                  dotData: const FlDotData(
+                    show: true,
+                  ),
+                  belowBarData: BarAreaData(
+                    show: false,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotEnoughChartData() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: 45,
+          horizontal: 24,
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.show_chart,
+              size: 52,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Not enough data yet',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Add at least two blood pressure readings '
+              'within this period to display a trend.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: 70,
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.favorite_outline,
+            size: 58,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'No blood pressure readings yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Log your first reading to start tracking trends.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
       ),
     );
   }

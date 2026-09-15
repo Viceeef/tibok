@@ -3,8 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 
 class BloodPressureService {
-  BloodPressureService({SupabaseClient? client})
-      : _client = client ?? SupabaseService.client;
+  BloodPressureService({
+    SupabaseClient? client,
+  }) : _client = client ?? SupabaseService.client;
 
   final SupabaseClient _client;
 
@@ -18,13 +19,41 @@ class BloodPressureService {
     return user.id;
   }
 
-  Future<List<Map<String, dynamic>>> getRecentReadings() async {
+  String classifyReading({
+    required int systolic,
+    required int diastolic,
+  }) {
+    // 2025 AHA/ACC adult BP categories.
+    // A single reading is not a diagnosis.
+
+    if (systolic > 180 || diastolic > 120) {
+      return 'Severe Hypertension';
+    }
+
+    if (systolic >= 140 || diastolic >= 90) {
+      return 'Stage 2 Hypertension';
+    }
+
+    if (systolic >= 130 || diastolic >= 80) {
+      return 'Stage 1 Hypertension';
+    }
+
+    if (systolic >= 120 && diastolic < 80) {
+      return 'Elevated';
+    }
+
+    return 'Normal';
+  }
+
+  Future<List<Map<String, dynamic>>> getRecentReadings({
+    int limit = 100,
+  }) async {
     final response = await _client
         .from('blood_pressure_logs')
         .select()
         .eq('user_id', _currentUserId)
         .order('logged_at', ascending: false)
-        .limit(30);
+        .limit(limit);
 
     return List<Map<String, dynamic>>.from(response);
   }
@@ -47,51 +76,40 @@ class BloodPressureService {
       );
     }
 
-    if (systolic <= diastolic) {
-      throw Exception(
-        'Systolic pressure must be higher than diastolic pressure.',
-      );
-    }
-
     if (heartRate < 30 || heartRate > 220) {
       throw Exception(
         'Heart rate must be between 30 and 220 bpm.',
       );
     }
 
+    if (systolic <= diastolic) {
+      throw Exception(
+        'Systolic pressure must be higher than diastolic pressure.',
+      );
+    }
+
+    final category = classifyReading(
+      systolic: systolic,
+      diastolic: diastolic,
+    );
+
     await _client.from('blood_pressure_logs').insert({
       'user_id': _currentUserId,
       'systolic': systolic,
       'diastolic': diastolic,
       'heart_rate': heartRate,
-      'category': _getCategory(
-        systolic,
-        diastolic,
-      ),
+      'category': category,
       'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
     });
   }
 
-  Future<void> deleteReading(String id) async {
+  Future<void> deleteReading(
+    String readingId,
+  ) async {
     await _client
         .from('blood_pressure_logs')
         .delete()
-        .eq('id', id)
+        .eq('id', readingId)
         .eq('user_id', _currentUserId);
-  }
-
-  String _getCategory(
-    int systolic,
-    int diastolic,
-  ) {
-    if (systolic < 120 && diastolic < 80) {
-      return 'Normal';
-    }
-
-    if (systolic >= 120 && systolic <= 129 && diastolic < 80) {
-      return 'Elevated';
-    }
-
-    return 'High';
   }
 }

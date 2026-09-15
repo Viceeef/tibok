@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/food_log_service.dart';
+import '../utils/sodium_rating.dart';
 
 class FoodLogPage extends StatefulWidget {
   const FoodLogPage({
@@ -73,21 +74,27 @@ class _FoodLogPageState extends State<FoodLogPage> {
       text: log['food_name']?.toString() ?? '',
     );
 
-    final sodiumPerServing = (log['sodium_per_serving_mg'] as num?)?.toInt() ??
-        (log['sodium_amount'] as num?)?.toInt() ??
-        0;
+    final storedSodiumBasis =
+        (log['sodium_per_serving_mg'] as num?)?.toDouble() ??
+            (log['sodium_amount'] as num?)?.toDouble() ??
+            0;
 
-    final servings = (log['servings'] as num?)?.toDouble() ?? 1.0;
+    final storedServings = (log['servings'] as num?)?.toDouble() ?? 1.0;
+
+    final initialGrams = storedServings * 100;
 
     final sodiumController = TextEditingController(
-      text: sodiumPerServing.toString(),
+      text: storedSodiumBasis.round().toString(),
     );
 
-    final servingsController = TextEditingController(
-      text: servings.toString(),
+    final gramsController = TextEditingController(
+      text: initialGrams % 1 == 0
+          ? initialGrams.round().toString()
+          : initialGrams.toStringAsFixed(1),
     );
 
     bool saving = false;
+    String? dialogError;
 
     await showDialog<void>(
       context: context,
@@ -98,19 +105,19 @@ class _FoodLogPageState extends State<FoodLogPage> {
             context,
             setDialogState,
           ) {
-            final sodium = int.tryParse(
+            final sodiumPer100g = double.tryParse(
               sodiumController.text.trim(),
             );
 
-            final servingCount = double.tryParse(
-              servingsController.text.trim(),
+            final grams = double.tryParse(
+              gramsController.text.trim(),
             );
 
-            final total = sodium != null &&
-                    sodium >= 0 &&
-                    servingCount != null &&
-                    servingCount > 0
-                ? (sodium * servingCount).round()
+            final totalSodium = sodiumPer100g != null &&
+                    sodiumPer100g >= 0 &&
+                    grams != null &&
+                    grams > 0
+                ? (sodiumPer100g * grams / 100).round()
                 : null;
 
             return AlertDialog(
@@ -126,7 +133,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       controller: nameController,
                       enabled: !saving,
                       decoration: const InputDecoration(
-                        labelText: 'Food / Meal Name',
+                        labelText: 'Food Name',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -136,15 +143,16 @@ class _FoodLogPageState extends State<FoodLogPage> {
                     TextField(
                       controller: sodiumController,
                       enabled: !saving,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       onChanged: (_) {
-                        setDialogState(
-                          () {},
-                        );
+                        setDialogState(() {});
                       },
                       decoration: const InputDecoration(
-                        labelText: 'Sodium per Serving',
+                        labelText: 'Sodium per 100 g',
                         suffixText: 'mg',
+                        helperText: 'Use the nutrition label or food estimate.',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -152,26 +160,35 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       height: 12,
                     ),
                     TextField(
-                      controller: servingsController,
+                      controller: gramsController,
                       enabled: !saving,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
                       onChanged: (_) {
-                        setDialogState(
-                          () {},
-                        );
+                        setDialogState(() {});
                       },
                       decoration: const InputDecoration(
-                        labelText: 'Servings Consumed',
+                        labelText: 'Amount Consumed',
+                        suffixText: 'g',
                         border: OutlineInputBorder(),
                       ),
                     ),
+                    if (sodiumPer100g != null && sodiumPer100g >= 0) ...[
+                      const SizedBox(
+                        height: 16,
+                      ),
+                      _buildTrafficLight(
+                        sodiumPer100g,
+                      ),
+                    ],
                     const SizedBox(
-                      height: 14,
+                      height: 16,
                     ),
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(
+                        14,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(
                           context,
@@ -189,7 +206,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                             ),
                           ),
                           Text(
-                            total == null ? '-- mg' : '$total mg',
+                            totalSodium == null ? '-- mg' : '$totalSodium mg',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -198,6 +215,18 @@ class _FoodLogPageState extends State<FoodLogPage> {
                         ],
                       ),
                     ),
+                    if (dialogError != null) ...[
+                      const SizedBox(
+                        height: 12,
+                      ),
+                      Text(
+                        dialogError!,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -206,13 +235,11 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   onPressed: saving
                       ? null
                       : () {
-                          Navigator.pop(
+                          Navigator.of(
                             dialogContext,
-                          );
+                          ).pop();
                         },
-                  child: const Text(
-                    'Cancel',
-                  ),
+                  child: const Text('Cancel'),
                 ),
                 FilledButton(
                   onPressed: saving
@@ -220,40 +247,47 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       : () async {
                           final name = nameController.text.trim();
 
-                          final sodium = int.tryParse(
+                          final sodiumPer100g = double.tryParse(
                             sodiumController.text.trim(),
                           );
 
-                          final servings = double.tryParse(
-                            servingsController.text.trim(),
+                          final grams = double.tryParse(
+                            gramsController.text.trim(),
                           );
 
                           if (name.isEmpty) {
-                            _showMessage(
-                              'Food name cannot be empty.',
+                            setDialogState(
+                              () {
+                                dialogError = 'Food name cannot be empty.';
+                              },
                             );
                             return;
                           }
 
-                          if (sodium == null || sodium < 0) {
-                            _showMessage(
-                              'Enter a valid sodium amount.',
+                          if (sodiumPer100g == null || sodiumPer100g < 0) {
+                            setDialogState(
+                              () {
+                                dialogError = 'Enter a valid sodium amount.';
+                              },
                             );
                             return;
                           }
 
-                          if (servings == null || servings <= 0) {
-                            _showMessage(
-                              'Enter valid servings.',
+                          if (grams == null || grams <= 0) {
+                            setDialogState(
+                              () {
+                                dialogError = 'Enter a valid amount consumed.';
+                              },
                             );
                             return;
                           }
 
-                          final total = (sodium * servings).round();
+                          final total = (sodiumPer100g * grams / 100).round();
 
                           setDialogState(
                             () {
                               saving = true;
+                              dialogError = null;
                             },
                           );
 
@@ -262,23 +296,23 @@ class _FoodLogPageState extends State<FoodLogPage> {
                               logId: log['id'].toString(),
                               foodName: name,
                               sodiumAmount: total,
-                              servings: servings,
-                              sodiumPerServingMg: sodium,
+                              servings: grams / 100,
+                              sodiumPerServingMg: sodiumPer100g.round(),
                             );
 
                             if (!dialogContext.mounted) {
                               return;
                             }
 
-                            Navigator.pop(
+                            Navigator.of(
                               dialogContext,
-                            );
+                            ).pop();
+
+                            await _loadLogs();
 
                             _showMessage(
                               'Food entry updated.',
                             );
-
-                            await _loadLogs();
                           } catch (e) {
                             if (!dialogContext.mounted) {
                               return;
@@ -287,11 +321,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                             setDialogState(
                               () {
                                 saving = false;
-                              },
-                            );
 
-                            _showMessage(
-                              'Could not update entry.',
+                                dialogError = 'Could not update food entry.';
+                              },
                             );
                           }
                         },
@@ -304,7 +336,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                           ),
                         )
                       : const Text(
-                          'Save',
+                          'Save Changes',
                         ),
                 ),
               ],
@@ -314,9 +346,15 @@ class _FoodLogPageState extends State<FoodLogPage> {
       },
     );
 
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 350,
+      ),
+    );
+
     nameController.dispose();
     sodiumController.dispose();
-    servingsController.dispose();
+    gramsController.dispose();
   }
 
   Future<void> _deleteLog(
@@ -326,7 +364,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
+      builder: (
+        dialogContext,
+      ) {
         return AlertDialog(
           title: const Text(
             'Delete Food Entry',
@@ -337,10 +377,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                  false,
-                );
+                ).pop(false);
               },
               child: const Text('Cancel'),
             ),
@@ -349,10 +388,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                 backgroundColor: Colors.redAccent,
               ),
               onPressed: () {
-                Navigator.pop(
+                Navigator.of(
                   dialogContext,
-                  true,
-                );
+                ).pop(true);
               },
               child: const Text('Delete'),
             ),
@@ -361,7 +399,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     try {
       await _service.deleteFoodLog(
@@ -380,7 +420,76 @@ class _FoodLogPageState extends State<FoodLogPage> {
     }
   }
 
-  void _showMessage(String message) {
+  Widget _buildTrafficLight(
+    double sodiumPer100g,
+  ) {
+    final color = SodiumRating.colorFor(
+      sodiumPer100g,
+    );
+
+    final label = SodiumRating.labelFor(
+      sodiumPer100g,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(
+          alpha: 0.10,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: color.withValues(
+            alpha: 0.30,
+          ),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            SodiumRating.iconFor(
+              sodiumPer100g,
+            ),
+            color: color,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(
+                  height: 3,
+                ),
+                Text(
+                  '${sodiumPer100g.round()} mg per 100 g',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMessage(
+    String message,
+  ) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context)
@@ -450,7 +559,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const SizedBox(height: 100),
+          const SizedBox(
+            height: 100,
+          ),
           const Icon(
             Icons.error_outline,
             size: 60,
@@ -494,7 +605,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
             color: Colors.grey.shade600,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(
+          height: 12,
+        ),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(
@@ -521,7 +634,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
             ),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(
+          height: 18,
+        ),
         if (_logs.isEmpty)
           _buildEmptyState()
         else
@@ -544,7 +659,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
             size: 58,
             color: Colors.grey.shade400,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(
+            height: 14,
+          ),
           const Text(
             'No food logged today',
             style: TextStyle(
@@ -562,7 +679,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
   ) {
     final sodium = (log['sodium_amount'] as num?)?.toInt() ?? 0;
 
-    final servings = (log['servings'] as num?)?.toDouble() ?? 1;
+    final storedServings = (log['servings'] as num?)?.toDouble() ?? 1;
+
+    final grams = storedServings * 100;
 
     final entryType = log['entry_type']?.toString() ?? 'manual';
 
@@ -587,8 +706,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
           ),
         ),
         subtitle: Text(
-          '${servings.toStringAsFixed(servings % 1 == 0 ? 0 : 1)} '
-          '${servings == 1 ? 'serving' : 'servings'}'
+          '${grams.toStringAsFixed(grams % 1 == 0 ? 0 : 1)} g consumed'
           ' • ${entryType == 'scanned' ? 'Scanned' : 'Food entry'}',
         ),
         trailing: Row(
@@ -603,11 +721,15 @@ class _FoodLogPageState extends State<FoodLogPage> {
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
-                  _showEditDialog(log);
+                  _showEditDialog(
+                    log,
+                  );
                 }
 
                 if (value == 'delete') {
-                  _deleteLog(log);
+                  _deleteLog(
+                    log,
+                  );
                 }
               },
               itemBuilder: (_) => const [
@@ -615,9 +737,15 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit),
-                      SizedBox(width: 8),
-                      Text('Edit'),
+                      Icon(
+                        Icons.edit,
+                      ),
+                      SizedBox(
+                        width: 8,
+                      ),
+                      Text(
+                        'Edit',
+                      ),
                     ],
                   ),
                 ),
@@ -629,8 +757,12 @@ class _FoodLogPageState extends State<FoodLogPage> {
                         Icons.delete_outline,
                         color: Colors.redAccent,
                       ),
-                      SizedBox(width: 8),
-                      Text('Delete'),
+                      SizedBox(
+                        width: 8,
+                      ),
+                      Text(
+                        'Delete',
+                      ),
                     ],
                   ),
                 ),
