@@ -22,7 +22,6 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-
     _loadProfile();
   }
 
@@ -60,9 +59,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       setState(() {
         _profile = profileResponse;
-
         _healthProfile = healthProfile;
-
         _isLoading = false;
       });
     } catch (e) {
@@ -72,7 +69,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       setState(() {
         _errorMessage = e.toString();
-
         _isLoading = false;
       });
     }
@@ -148,7 +144,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       textInputAction: TextInputAction.done,
                       decoration: const InputDecoration(
                         labelText: 'Username',
-                        border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(
@@ -158,10 +153,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       decoration: const InputDecoration(
                         labelText: 'Email',
                         helperText:
-                            'Email changes require account verification.',
-                        border: OutlineInputBorder(),
+                            'Your email is shown for account reference.',
                       ),
-                      child: Text(_email),
+                      child: Text(
+                        _email,
+                      ),
                     ),
                   ],
                 ),
@@ -208,9 +204,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             }
 
                             await SupabaseService.client
-                                .from(
-                              'profiles',
-                            )
+                                .from('profiles')
                                 .update({
                               'username': username,
                             }).eq(
@@ -333,7 +327,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : Icons.visibility_off_outlined,
                           ),
                         ),
-                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(
@@ -362,7 +355,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : Icons.visibility_off_outlined,
                           ),
                         ),
-                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(
@@ -391,7 +383,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : Icons.visibility_off_outlined,
                           ),
                         ),
-                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(
@@ -425,6 +416,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: saving
                       ? null
                       : () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+
                           Navigator.of(
                             dialogContext,
                           ).pop();
@@ -498,6 +491,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             if (!dialogContext.mounted) {
                               return;
                             }
+
+                            FocusManager.instance.primaryFocus?.unfocus();
 
                             Navigator.of(
                               dialogContext,
@@ -654,47 +649,21 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall,
           ),
           const SizedBox(
             height: 3,
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium,
           ),
         ],
       ),
-    );
-  }
-
-  Future<void> _showNotifications() async {
-    await showDialog<void>(
-      context: context,
-      builder: (
-        dialogContext,
-      ) {
-        return AlertDialog(
-          title: const Text(
-            'Notifications',
-          ),
-          content: const Text(
-            'Notification preferences are not enabled in this version of Tibok.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop();
-              },
-              child: const Text(
-                'Close',
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -952,7 +921,9 @@ class _ProfilePageState extends State<ProfilePage> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(
+            message,
+          ),
         ),
       );
   }
@@ -1129,28 +1100,17 @@ class _ProfilePageState extends State<ProfilePage> {
           height: 24,
         ),
         _sectionTitle(
-          'Preferences',
+          'Accessibility',
         ),
         const SizedBox(
           height: 9,
         ),
         Card(
-          child: Column(
-            children: [
-              _profileTile(
-                icon: Icons.accessibility_new_rounded,
-                title: 'Accessibility & Display',
-                subtitle: 'Text size and readability',
-                onTap: _openAccessibilitySettings,
-              ),
-              const Divider(),
-              _profileTile(
-                icon: Icons.notifications_outlined,
-                title: 'Notifications',
-                subtitle: 'Notification preferences',
-                onTap: _showNotifications,
-              ),
-            ],
+          child: _profileTile(
+            icon: Icons.accessibility_new_rounded,
+            title: 'Accessibility & Display',
+            subtitle: 'Text size and readability',
+            onTap: _openAccessibilitySettings,
           ),
         ),
         const SizedBox(
@@ -1210,7 +1170,9 @@ class _ProfilePageState extends State<ProfilePage> {
       header: true,
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium,
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium,
       ),
     );
   }
@@ -1226,14 +1188,18 @@ class _ProfilePageState extends State<ProfilePage> {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
+          color: Theme.of(
+            context,
+          ).colorScheme.primaryContainer,
           borderRadius: BorderRadius.circular(
             12,
           ),
         ),
         child: Icon(
           icon,
-          color: Theme.of(context).colorScheme.onPrimaryContainer,
+          color: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer,
         ),
       ),
       title: Text(
@@ -1242,7 +1208,9 @@ class _ProfilePageState extends State<ProfilePage> {
           fontWeight: FontWeight.w700,
         ),
       ),
-      subtitle: Text(subtitle),
+      subtitle: Text(
+        subtitle,
+      ),
       trailing: const Icon(
         Icons.chevron_right,
       ),

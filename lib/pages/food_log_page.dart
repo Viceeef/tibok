@@ -37,6 +37,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
   @override
   void initState() {
     super.initState();
+
     _loadLogs();
   }
 
@@ -51,14 +52,18 @@ class _FoodLogPageState extends State<FoodLogPage> {
     try {
       final logs = await _service.getTodayLogs();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _logs = logs;
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _errorMessage = e.toString();
@@ -98,7 +103,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
     bool saving = false;
     String? dialogError;
 
-    await showDialog<void>(
+    final updated = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (
@@ -135,22 +140,35 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   children: [
                     if (existingBasis != 'per_100g') ...[
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(
+                          12,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.orange.withValues(
                             alpha: 0.10,
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'This older entry does not have a confirmed '
-                          'per-100 g nutrition basis. Enter the correct '
-                          'values below. Saving will update it to the '
-                          'current Tibok format.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.35,
+                          borderRadius: BorderRadius.circular(
+                            12,
                           ),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.orange,
+                            ),
+                            SizedBox(
+                              width: 10,
+                            ),
+                            Expanded(
+                              child: Text(
+                                'This entry does not have a confirmed per-100 g basis. '
+                                'Enter the correct values below. Saving will convert it '
+                                'to the current Tibok format.',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(
@@ -160,13 +178,16 @@ class _FoodLogPageState extends State<FoodLogPage> {
                     TextField(
                       controller: nameController,
                       enabled: !saving,
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Food Name',
-                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.restaurant_outlined,
+                        ),
                       ),
                     ),
                     const SizedBox(
-                      height: 12,
+                      height: 14,
                     ),
                     TextField(
                       controller: sodiumController,
@@ -174,6 +195,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      textInputAction: TextInputAction.next,
                       onChanged: (_) {
                         setDialogState(
                           () {},
@@ -183,11 +205,13 @@ class _FoodLogPageState extends State<FoodLogPage> {
                         labelText: 'Sodium per 100 g',
                         suffixText: 'mg',
                         helperText: 'Use the nutrition label or food estimate.',
-                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.water_drop_outlined,
+                        ),
                       ),
                     ),
                     const SizedBox(
-                      height: 12,
+                      height: 14,
                     ),
                     TextField(
                       controller: gramsController,
@@ -195,6 +219,7 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      textInputAction: TextInputAction.done,
                       onChanged: (_) {
                         setDialogState(
                           () {},
@@ -203,7 +228,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       decoration: const InputDecoration(
                         labelText: 'Amount Consumed',
                         suffixText: 'g',
-                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.scale_outlined,
+                        ),
                       ),
                     ),
                     if (sodiumPer100g != null && sodiumPer100g >= 0) ...[
@@ -224,8 +251,10 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       decoration: BoxDecoration(
                         color: Theme.of(
                           context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
+                        ).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(
+                          12,
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -253,9 +282,11 @@ class _FoodLogPageState extends State<FoodLogPage> {
                       ),
                       Text(
                         dialogError!,
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 12,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.error,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -267,9 +298,13 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   onPressed: saving
                       ? null
                       : () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+
                           Navigator.of(
                             dialogContext,
-                          ).pop();
+                          ).pop(
+                            false,
+                          );
                         },
                   child: const Text(
                     'Cancel',
@@ -339,14 +374,12 @@ class _FoodLogPageState extends State<FoodLogPage> {
                               return;
                             }
 
+                            FocusManager.instance.primaryFocus?.unfocus();
+
                             Navigator.of(
                               dialogContext,
-                            ).pop();
-
-                            await _loadLogs();
-
-                            _showMessage(
-                              'Food entry updated.',
+                            ).pop(
+                              true,
                             );
                           } catch (e) {
                             if (!dialogContext.mounted) {
@@ -389,6 +422,22 @@ class _FoodLogPageState extends State<FoodLogPage> {
     nameController.dispose();
     sodiumController.dispose();
     gramsController.dispose();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (updated == true) {
+      await _loadLogs();
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        'Food entry updated.',
+      );
+    }
   }
 
   Future<void> _deleteLog(
@@ -413,22 +462,34 @@ class _FoodLogPageState extends State<FoodLogPage> {
               onPressed: () {
                 Navigator.of(
                   dialogContext,
-                ).pop(false);
+                ).pop(
+                  false,
+                );
               },
               child: const Text(
                 'Cancel',
               ),
             ),
-            FilledButton(
+            FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.redAccent,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.error,
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onError,
               ),
               onPressed: () {
                 Navigator.of(
                   dialogContext,
-                ).pop(true);
+                ).pop(
+                  true,
+                );
               },
-              child: const Text(
+              icon: const Icon(
+                Icons.delete_outline,
+              ),
+              label: const Text(
                 'Delete',
               ),
             ),
@@ -446,11 +507,15 @@ class _FoodLogPageState extends State<FoodLogPage> {
         log['id'].toString(),
       );
 
+      await _loadLogs();
+
+      if (!mounted) {
+        return;
+      }
+
       _showMessage(
         'Food entry deleted.',
       );
-
-      await _loadLogs();
     } catch (e) {
       _showMessage(
         'Could not delete entry.',
@@ -471,12 +536,16 @@ class _FoodLogPageState extends State<FoodLogPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(
+        14,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(
           alpha: 0.10,
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(
+          14,
+        ),
         border: Border.all(
           color: color.withValues(
             alpha: 0.30,
@@ -513,7 +582,6 @@ class _FoodLogPageState extends State<FoodLogPage> {
                   '${sodiumPer100g.round()} mg per 100 g',
                   style: TextStyle(
                     color: color,
-                    fontSize: 12,
                   ),
                 ),
               ],
@@ -527,13 +595,17 @@ class _FoodLogPageState extends State<FoodLogPage> {
   void _showMessage(
     String message,
   ) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(
+            message,
+          ),
         ),
       );
   }
@@ -609,91 +681,47 @@ class _FoodLogPageState extends State<FoodLogPage> {
     }
 
     if (_errorMessage != null) {
-      return ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(
-            height: 100,
-          ),
-          const Icon(
-            Icons.error_outline,
-            size: 60,
-            color: Colors.redAccent,
-          ),
-          const SizedBox(
-            height: 14,
-          ),
-          const Text(
-            'Unable to load your food log.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(
-            height: 16,
-          ),
-          FilledButton.icon(
-            onPressed: _loadLogs,
-            icon: const Icon(
-              Icons.refresh,
-            ),
-            label: const Text(
-              'Try Again',
-            ),
-          ),
-        ],
-      );
+      return _buildErrorState();
     }
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
+        18,
+        10,
+        18,
         30,
       ),
       children: [
         Text(
           _formatToday(),
-          style: TextStyle(
-            color: Colors.grey.shade600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
         ),
         const SizedBox(
           height: 12,
         ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(
-              18,
-            ),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Total Sodium Today',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Text(
-                  '$_totalSodium mg',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        _buildSummaryCard(),
         const SizedBox(
-          height: 18,
+          height: 20,
         ),
+        if (_logs.isNotEmpty)
+          Text(
+            '${_logs.length} food ${_logs.length == 1 ? 'entry' : 'entries'} today',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium,
+          ),
+        if (_logs.isNotEmpty)
+          const SizedBox(
+            height: 10,
+          ),
         if (_logs.isEmpty)
           _buildEmptyState()
         else
@@ -704,29 +732,116 @@ class _FoodLogPageState extends State<FoodLogPage> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 70,
+  Widget _buildSummaryCard() {
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black.withValues(
+        alpha: 0.07,
       ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.restaurant_menu,
-            size: 58,
-            color: Colors.grey.shade400,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          18,
+        ),
+        side: BorderSide(
+          color: colors.primary.withValues(
+            alpha: 0.15,
           ),
-          const SizedBox(
-            height: 14,
-          ),
-          const Text(
-            'No food logged today',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(
+          18,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: colors.primaryContainer,
+                borderRadius: BorderRadius.circular(
+                  14,
+                ),
+              ),
+              child: Icon(
+                Icons.water_drop_outlined,
+                color: colors.onPrimaryContainer,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(
+              width: 14,
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Sodium Today',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 3,
+                  ),
+                  Text(
+                    '$_totalSodium mg',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: 42,
+          horizontal: 24,
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.restaurant_menu_rounded,
+              size: 54,
+              color: colors.outline,
+            ),
+            const SizedBox(
+              height: 14,
+            ),
+            Text(
+              'No food logged today',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(
+              height: 6,
+            ),
+            Text(
+              'Foods you add or scan today will appear here.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -734,6 +849,10 @@ class _FoodLogPageState extends State<FoodLogPage> {
   Widget _buildLogCard(
     Map<String, dynamic> log,
   ) {
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
     final sodium = (log['sodium_amount'] as num?)?.toInt() ?? 0;
 
     final entryType = log['entry_type']?.toString() ?? 'manual';
@@ -766,125 +885,155 @@ class _FoodLogPageState extends State<FoodLogPage> {
         ? SodiumRating.colorFor(
             sodiumPer100g,
           )
-        : Colors.grey;
+        : colors.onSurfaceVariant;
+
+    final statusLabel = sodiumPer100g != null
+        ? SodiumRating.labelFor(
+            sodiumPer100g,
+          )
+        : 'Sodium basis unavailable';
+
+    final statusIcon = sodiumPer100g != null
+        ? SodiumRating.iconFor(
+            sodiumPer100g,
+          )
+        : entryType == 'scanned'
+            ? Icons.qr_code_scanner_rounded
+            : Icons.info_outline;
 
     return Card(
+      elevation: 1,
       margin: const EdgeInsets.only(
-        bottom: 10,
+        bottom: 12,
       ),
-      child: ListTile(
-        isThreeLine: true,
-        leading: CircleAvatar(
-          backgroundColor: indicatorColor.withValues(
-            alpha: 0.12,
-          ),
-          child: Icon(
-            sodiumPer100g != null
-                ? SodiumRating.iconFor(
-                    sodiumPer100g,
-                  )
-                : entryType == 'scanned'
-                    ? Icons.qr_code_scanner
-                    : Icons.help_outline,
-            color: indicatorColor,
-          ),
+      child: Padding(
+        padding: const EdgeInsets.all(
+          15,
         ),
-        title: Text(
-          log['food_name']?.toString() ?? 'Unnamed food',
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(
-              height: 2,
-            ),
-            Text(
-              '$quantityText • '
-              '${_entryTypeLabel(entryType)}',
-            ),
-            const SizedBox(
-              height: 3,
-            ),
-            if (sodiumPer100g != null)
-              Text(
-                '${SodiumRating.labelFor(sodiumPer100g)}'
-                ' • ${sodiumPer100g.round()} mg/100 g',
-                style: TextStyle(
-                  color: SodiumRating.colorFor(
-                    sodiumPer100g,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: indicatorColor.withValues(
+                      alpha: 0.10,
+                    ),
+                    borderRadius: BorderRadius.circular(
+                      13,
+                    ),
                   ),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  child: Icon(
+                    statusIcon,
+                    color: indicatorColor,
+                  ),
                 ),
-              )
-            else
-              Text(
-                'Sodium basis unavailable',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 11,
+                const SizedBox(
+                  width: 12,
                 ),
-              ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$sodium mg',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'edit') {
-                  _showEditDialog(
-                    log,
-                  );
-                }
-
-                if (value == 'delete') {
-                  _deleteLog(
-                    log,
-                  );
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.edit,
+                      Text(
+                        log['food_name']?.toString() ?? 'Unnamed food',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      SizedBox(
-                        width: 8,
+                      const SizedBox(
+                        height: 4,
                       ),
                       Text(
-                        'Edit',
+                        '$quantityText • '
+                        '${_entryTypeLabel(entryType)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_outline,
-                        color: Colors.redAccent,
-                      ),
-                      SizedBox(
-                        width: 8,
-                      ),
-                      Text(
-                        'Delete',
-                      ),
-                    ],
+                const SizedBox(
+                  width: 10,
+                ),
+                Text(
+                  '$sodium mg',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  statusIcon,
+                  size: 18,
+                  color: indicatorColor,
+                ),
+                const SizedBox(
+                  width: 6,
+                ),
+                Expanded(
+                  child: Text(
+                    sodiumPer100g != null
+                        ? '$statusLabel • ${sodiumPer100g.round()} mg per 100 g'
+                        : statusLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: indicatorColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(
+              height: 8,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    _showEditDialog(
+                      log,
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                  ),
+                  label: const Text(
+                    'Edit',
+                  ),
+                ),
+                const SizedBox(
+                  width: 4,
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    _deleteLog(
+                      log,
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: colors.error,
+                  ),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                  ),
+                  label: const Text(
+                    'Delete',
                   ),
                 ),
               ],
@@ -892,6 +1041,47 @@ class _FoodLogPageState extends State<FoodLogPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    final theme = Theme.of(context);
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(
+        24,
+      ),
+      children: [
+        const SizedBox(
+          height: 100,
+        ),
+        Icon(
+          Icons.error_outline,
+          size: 60,
+          color: theme.colorScheme.error,
+        ),
+        const SizedBox(
+          height: 14,
+        ),
+        Text(
+          'Unable to load your food log.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleLarge,
+        ),
+        const SizedBox(
+          height: 18,
+        ),
+        FilledButton.icon(
+          onPressed: _loadLogs,
+          icon: const Icon(
+            Icons.refresh_rounded,
+          ),
+          label: const Text(
+            'Try Again',
+          ),
+        ),
+      ],
     );
   }
 }

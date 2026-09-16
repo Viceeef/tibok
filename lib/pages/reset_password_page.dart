@@ -20,6 +20,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       TextEditingController();
 
   bool _isLoading = false;
+
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
 
@@ -29,10 +30,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   void dispose() {
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+
     super.dispose();
   }
 
   Future<void> _changePassword() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
     final newPassword = _newPasswordController.text;
 
     final confirmPassword = _confirmPasswordController.text;
@@ -59,33 +63,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     });
 
     try {
-      //
-      // Change the password using the authenticated
-      // recovery session.
-      //
       await SupabaseService.updateRecoveredPassword(
         newPassword: newPassword,
       );
 
-      //
-      // End the temporary recovery session.
-      //
       await SupabaseService.signOut();
 
       if (!mounted) {
         return;
       }
 
-      //
-      // IMPORTANT:
-      //
-      // Restore AuthGate as the ROOT route.
-      //
-      // LoginPage expects AuthGate to exist underneath it.
-      // After a successful login, LoginPage pops back to
-      // the first route. AuthGate will then detect the
-      // authenticated session and show the dashboard.
-      //
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => const AuthGate(),
@@ -93,9 +80,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         (route) => false,
       );
 
-      //
-      // Wait for AuthGate to become the root route.
-      //
       await Future<void>.delayed(
         const Duration(
           milliseconds: 150,
@@ -106,9 +90,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         return;
       }
 
-      //
-      // Put LoginPage above AuthGate.
-      //
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => const LoginPage(),
@@ -121,7 +102,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
       setState(() {
         _isLoading = false;
-        _errorMessage = _friendlyError(e);
+        _errorMessage = _friendlyError(
+          e,
+        );
       });
     }
   }
@@ -135,25 +118,30 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         text.contains('jwt') ||
         text.contains('expired')) {
       return 'The recovery link is invalid or has expired. '
-          'Please request a new password reset email.';
+          'Request a new password reset email.';
     }
 
     if (text.contains('weak') || text.contains('password should')) {
       return 'The password does not meet the account password requirements.';
     }
 
-    if (text.contains('same password')) {
+    if (text.contains(
+      'same password',
+    )) {
       return 'Choose a password different from your previous password.';
     }
 
     return 'The password could not be updated. '
-        'Please request a new recovery email and try again.';
+        'Request a new recovery email and try again.';
   }
 
   @override
   Widget build(
     BuildContext context,
   ) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return PopScope(
       canPop: false,
       child: Scaffold(
@@ -165,42 +153,38 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(
               24,
+              24,
+              24,
+              32,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(
-                  height: 30,
-                ),
                 Center(
                   child: Container(
                     width: 82,
                     height: 82,
                     decoration: BoxDecoration(
-                      color: Colors.redAccent.withValues(
-                        alpha: 0.10,
-                      ),
+                      color: colors.primaryContainer,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.lock_reset,
+                    child: Icon(
+                      Icons.lock_reset_rounded,
                       size: 42,
-                      color: Colors.redAccent,
+                      color: colors.onPrimaryContainer,
                     ),
                   ),
                 ),
                 const SizedBox(
-                  height: 24,
+                  height: 22,
                 ),
-                const Text(
+                Text(
                   'Create New Password',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(
                   height: 8,
@@ -209,35 +193,36 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   'Your recovery link has been verified. '
                   'Choose a new password for your Tibok account.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    height: 1.4,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(
-                  height: 30,
+                  height: 28,
                 ),
                 TextField(
                   controller: _newPasswordController,
                   enabled: !_isLoading,
                   obscureText: _hidePassword,
+                  textInputAction: TextInputAction.next,
                   autofillHints: const [
                     AutofillHints.newPassword,
                   ],
                   decoration: InputDecoration(
                     labelText: 'New Password',
+                    helperText: 'Use at least 8 characters.',
                     prefixIcon: const Icon(
                       Icons.lock_outline,
                     ),
                     suffixIcon: IconButton(
+                      tooltip:
+                          _hidePassword ? 'Show password' : 'Hide password',
                       onPressed: _isLoading
                           ? null
                           : () {
-                              setState(
-                                () {
-                                  _hidePassword = !_hidePassword;
-                                },
-                              );
+                              setState(() {
+                                _hidePassword = !_hidePassword;
+                              });
                             },
                       icon: Icon(
                         _hidePassword
@@ -245,7 +230,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             : Icons.visibility_off_outlined,
                       ),
                     ),
-                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(
@@ -255,23 +239,25 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   controller: _confirmPasswordController,
                   enabled: !_isLoading,
                   obscureText: _hideConfirmPassword,
+                  textInputAction: TextInputAction.done,
                   autofillHints: const [
                     AutofillHints.newPassword,
                   ],
                   decoration: InputDecoration(
                     labelText: 'Confirm New Password',
                     prefixIcon: const Icon(
-                      Icons.lock_outline,
+                      Icons.lock_reset_outlined,
                     ),
                     suffixIcon: IconButton(
+                      tooltip: _hideConfirmPassword
+                          ? 'Show password'
+                          : 'Hide password',
                       onPressed: _isLoading
                           ? null
                           : () {
-                              setState(
-                                () {
-                                  _hideConfirmPassword = !_hideConfirmPassword;
-                                },
-                              );
+                              setState(() {
+                                _hideConfirmPassword = !_hideConfirmPassword;
+                              });
                             },
                       icon: Icon(
                         _hideConfirmPassword
@@ -279,18 +265,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             : Icons.visibility_off_outlined,
                       ),
                     ),
-                    border: const OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(
-                  height: 8,
-                ),
-                Text(
-                  'Use at least 8 characters.',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                  ),
+                  onSubmitted: (_) {
+                    if (!_isLoading) {
+                      _changePassword();
+                    }
+                  },
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(
@@ -301,19 +281,30 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       12,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.redAccent.withValues(
-                        alpha: 0.08,
-                      ),
+                      color: colors.errorContainer,
                       borderRadius: BorderRadius.circular(
-                        10,
+                        12,
                       ),
                     ),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 13,
-                      ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: colors.onErrorContainer,
+                        ),
+                        const SizedBox(
+                          width: 10,
+                        ),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: colors.onErrorContainer,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -331,15 +322,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                           ),
                         )
                       : const Icon(
-                          Icons.check,
+                          Icons.check_rounded,
                         ),
                   label: Text(
                     _isLoading ? 'Updating...' : 'Set New Password',
-                  ),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                    ),
                   ),
                 ),
               ],

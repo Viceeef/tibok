@@ -22,19 +22,26 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   void dispose() {
     _emailController.dispose();
+
     super.dispose();
   }
 
-  bool _looksLikeEmail(String value) {
+  bool _looksLikeEmail(
+    String value,
+  ) {
     final email = value.trim();
 
     return email.contains('@') && email.contains('.') && email.length >= 5;
   }
 
   Future<void> _sendResetEmail() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
     final email = _emailController.text.trim();
 
-    if (!_looksLikeEmail(email)) {
+    if (!_looksLikeEmail(
+      email,
+    )) {
       setState(() {
         _errorMessage = 'Enter a valid email address.';
       });
@@ -65,7 +72,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       }
 
       setState(() {
-        _errorMessage = _friendlyError(e);
+        _errorMessage = _friendlyError(
+          e,
+        );
       });
     } finally {
       if (mounted) {
@@ -96,7 +105,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         text.contains(
           'socket',
         )) {
-      return 'Unable to reach Supabase. Check your internet connection.';
+      return 'Check your internet connection and try again.';
     }
 
     return 'The password reset email could not be sent. Please try again.';
@@ -114,6 +123,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(
             24,
           ),
@@ -124,54 +134,50 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Widget _buildRequestForm() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(
-          height: 30,
+          height: 24,
         ),
         Center(
           child: Container(
             width: 82,
             height: 82,
             decoration: BoxDecoration(
-              color: Colors.redAccent.withValues(
-                alpha: 0.10,
-              ),
+              color: colors.primaryContainer,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.lock_reset,
-              color: Colors.redAccent,
+            child: Icon(
+              Icons.lock_reset_rounded,
+              color: colors.onPrimaryContainer,
               size: 42,
             ),
           ),
         ),
         const SizedBox(
-          height: 24,
+          height: 22,
         ),
-        const Text(
+        Text(
           'Reset Your Password',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-          ),
+          style: theme.textTheme.headlineSmall,
         ),
         const SizedBox(
           height: 8,
         ),
         Text(
-          'Enter the email address associated with your Tibok account. '
-          'Supabase will send you a password recovery email.',
+          'Enter the email address connected to your Tibok account.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.grey.shade600,
-            height: 1.4,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colors.onSurfaceVariant,
           ),
         ),
         const SizedBox(
-          height: 30,
+          height: 28,
         ),
         TextField(
           controller: _emailController,
@@ -186,7 +192,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             prefixIcon: Icon(
               Icons.email_outlined,
             ),
-            border: OutlineInputBorder(),
           ),
           onSubmitted: (_) {
             if (!_isLoading) {
@@ -198,25 +203,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           const SizedBox(
             height: 14,
           ),
-          Container(
-            padding: const EdgeInsets.all(
-              12,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.redAccent.withValues(
-                alpha: 0.08,
-              ),
-              borderRadius: BorderRadius.circular(
-                10,
-              ),
-            ),
-            child: Text(
-              _errorMessage!,
-              style: const TextStyle(
-                color: Colors.redAccent,
-                fontSize: 13,
-              ),
-            ),
+          _buildErrorBox(
+            _errorMessage!,
           ),
         ],
         const SizedBox(
@@ -238,14 +226,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           label: Text(
             _isLoading ? 'Sending...' : 'Send Reset Email',
           ),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(
-              vertical: 16,
-            ),
-          ),
         ),
         const SizedBox(
-          height: 12,
+          height: 10,
         ),
         TextButton(
           onPressed: _isLoading
@@ -264,39 +247,37 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Widget _buildSuccessState() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(
-          height: 36,
+          height: 30,
         ),
-        const Icon(
+        Icon(
           Icons.mark_email_read_outlined,
-          color: Colors.green,
+          color: colors.primary,
           size: 72,
         ),
         const SizedBox(
-          height: 22,
+          height: 20,
         ),
-        const Text(
+        Text(
           'Check Your Email',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-          ),
+          style: theme.textTheme.headlineSmall,
         ),
         const SizedBox(
           height: 10,
         ),
         Text(
-          'If an account is associated with '
-          '${_emailController.text.trim()}, '
+          'If an account is associated with ${_emailController.text.trim()}, '
           'a password recovery email has been requested.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.grey.shade700,
-            height: 1.5,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colors.onSurfaceVariant,
           ),
         ),
         const SizedBox(
@@ -307,30 +288,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             16,
           ),
           decoration: BoxDecoration(
-            color: Colors.blueGrey.withValues(
-              alpha: 0.08,
-            ),
+            color: colors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(
-              14,
+              16,
+            ),
+            border: Border.all(
+              color: colors.outlineVariant,
             ),
           ),
-          child: const Row(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
                 Icons.info_outline,
+                color: colors.primary,
               ),
-              SizedBox(
-                width: 12,
+              const SizedBox(
+                width: 11,
               ),
-              Expanded(
+              const Expanded(
                 child: Text(
-                  'Open the email from Supabase and use the Reset Password link. '
-                  'We will test where that link opens before connecting it '
-                  'directly back to the Tibok Android app.',
-                  style: TextStyle(
-                    height: 1.4,
-                  ),
+                  'Open the recovery email and tap the Reset Password link. '
+                  'Tibok will open so you can create a new password.',
                 ),
               ),
             ],
@@ -345,11 +324,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               context,
             );
           },
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(
-              vertical: 16,
-            ),
-          ),
           child: const Text(
             'Return to Login',
           ),
@@ -371,6 +345,44 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorBox(
+    String message,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(
+        12,
+      ),
+      decoration: BoxDecoration(
+        color: colors.errorContainer,
+        borderRadius: BorderRadius.circular(
+          12,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: colors.onErrorContainer,
+          ),
+          const SizedBox(
+            width: 10,
+          ),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: colors.onErrorContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

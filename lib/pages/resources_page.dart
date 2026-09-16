@@ -28,12 +28,14 @@ class _ResourcesPageState extends State<ResourcesPage> {
   @override
   void initState() {
     super.initState();
+
     _loadResources();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+
     super.dispose();
   }
 
@@ -50,7 +52,9 @@ class _ResourcesPageState extends State<ResourcesPage> {
 
       final savedIds = await _service.getSavedResourceIds();
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _resources = resources;
@@ -58,7 +62,9 @@ class _ResourcesPageState extends State<ResourcesPage> {
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _errorMessage = e.toString();
@@ -70,44 +76,58 @@ class _ResourcesPageState extends State<ResourcesPage> {
   List<Map<String, dynamic>> get _filteredResources {
     final query = _searchController.text.trim().toLowerCase();
 
-    return _resources.where((resource) {
-      final id = resource['id']?.toString() ?? '';
+    return _resources.where(
+      (resource) {
+        final id = resource['id']?.toString() ?? '';
 
-      if (_selectedTab == 'Bookmarks' && !_savedIds.contains(id)) {
-        return false;
-      }
-
-      if (_selectedTab == 'Articles') {
-        final type = resource['resource_type']?.toString().toLowerCase() ?? '';
-
-        if (type != 'article') {
+        if (_selectedTab == 'Bookmarks' && !_savedIds.contains(id)) {
           return false;
         }
-      }
 
-      if (_selectedTab == 'Recipes') {
         final type = resource['resource_type']?.toString().toLowerCase() ?? '';
 
-        if (type != 'recipe') {
+        if (_selectedTab == 'Articles' && type != 'article') {
           return false;
         }
-      }
 
-      if (query.isEmpty) {
-        return true;
-      }
+        if (_selectedTab == 'Recipes' && type != 'recipe') {
+          return false;
+        }
 
-      final title = resource['title']?.toString().toLowerCase() ?? '';
+        if (query.isEmpty) {
+          return true;
+        }
 
-      final description =
-          resource['description']?.toString().toLowerCase() ?? '';
+        final title = resource['title']?.toString().toLowerCase() ?? '';
 
-      final source = resource['source_name']?.toString().toLowerCase() ?? '';
+        final description =
+            resource['description']?.toString().toLowerCase() ?? '';
 
-      return title.contains(query) ||
-          description.contains(query) ||
-          source.contains(query);
-    }).toList();
+        final source = resource['source_name']?.toString().toLowerCase() ?? '';
+
+        final category =
+            resource['topic_category']?.toString().toLowerCase() ?? '';
+
+        return title.contains(query) ||
+            description.contains(query) ||
+            source.contains(query) ||
+            category.contains(query);
+      },
+    ).toList();
+  }
+
+  int? _readMinutes(
+    Map<String, dynamic> resource,
+  ) {
+    final value = resource['estimated_read_minutes'];
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(
+      value?.toString() ?? '',
+    );
   }
 
   Future<void> _openResource(
@@ -143,7 +163,9 @@ class _ResourcesPageState extends State<ResourcesPage> {
         currentlySaved: isSaved,
       );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         if (newState) {
@@ -152,23 +174,65 @@ class _ResourcesPageState extends State<ResourcesPage> {
           _savedIds.remove(id);
         }
       });
-    } catch (e) {
-      if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not update bookmark.',
-            ),
-          ),
-        );
+      _showMessage(
+        newState ? 'Saved to bookmarks.' : 'Removed from bookmarks.',
+      );
+    } catch (_) {
+      _showMessage(
+        'Could not update bookmark.',
+      );
     }
   }
 
+  void _showMessage(
+    String message,
+  ) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+          ),
+        ),
+      );
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+
+    setState(() {});
+  }
+
+  IconData _resourceIcon(
+    String type,
+  ) {
+    if (type.toLowerCase() == 'recipe') {
+      return Icons.restaurant_menu_rounded;
+    }
+
+    return Icons.article_outlined;
+  }
+
+  String _resourceTypeLabel(
+    String type,
+  ) {
+    if (type.toLowerCase() == 'recipe') {
+      return 'Recipe';
+    }
+
+    return 'Article';
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -198,52 +262,22 @@ class _ResourcesPageState extends State<ResourcesPage> {
     }
 
     if (_errorMessage != null) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 120),
-          const Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.redAccent,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Unable to load health resources.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage!,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _loadResources,
-            icon: const Icon(
-              Icons.refresh,
-            ),
-            label: const Text(
-              'Try Again',
-            ),
-          ),
-        ],
-      );
+      return _buildErrorState();
     }
 
     final resources = _filteredResources;
 
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
     return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
+        18,
+        10,
+        18,
         30,
       ),
       children: [
@@ -253,14 +287,24 @@ class _ResourcesPageState extends State<ResourcesPage> {
             setState(() {});
           },
           decoration: InputDecoration(
-            hintText: 'Search health resources...',
-            prefixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+            hintText: 'Search resources',
+            prefixIcon: const Icon(
+              Icons.search_rounded,
             ),
+            suffixIcon: _searchController.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: _clearSearch,
+                    icon: const Icon(
+                      Icons.close_rounded,
+                    ),
+                  ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(
+          height: 14,
+        ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -276,7 +320,9 @@ class _ResourcesPageState extends State<ResourcesPage> {
                     right: 8,
                   ),
                   child: ChoiceChip(
-                    label: Text(tab),
+                    label: Text(
+                      tab,
+                    ),
                     selected: _selectedTab == tab,
                     onSelected: (_) {
                       setState(() {
@@ -289,7 +335,29 @@ class _ResourcesPageState extends State<ResourcesPage> {
             ).toList(),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(
+          height: 20,
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _selectedTab == 'Bookmarks' ? 'Saved Resources' : 'Resources',
+                style: theme.textTheme.titleLarge,
+              ),
+            ),
+            Text(
+              '${resources.length}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(
+          height: 10,
+        ),
         if (resources.isEmpty)
           _buildEmptyState()
         else
@@ -301,40 +369,49 @@ class _ResourcesPageState extends State<ResourcesPage> {
   }
 
   Widget _buildEmptyState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 80,
-      ),
-      child: Column(
-        children: [
-          Icon(
-            _selectedTab == 'Bookmarks'
-                ? Icons.bookmark_border
-                : Icons.menu_book_outlined,
-            size: 56,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            _selectedTab == 'Bookmarks'
-                ? 'No saved resources yet'
-                : 'No resources found',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: 42,
+          horizontal: 24,
+        ),
+        child: Column(
+          children: [
+            Icon(
+              _selectedTab == 'Bookmarks'
+                  ? Icons.bookmark_border_rounded
+                  : Icons.menu_book_outlined,
+              size: 54,
+              color: colors.outline,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _selectedTab == 'Bookmarks'
-                ? 'Bookmark useful resources to find them here.'
-                : 'Try a different search or category.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey.shade600,
+            const SizedBox(
+              height: 14,
             ),
-          ),
-        ],
+            Text(
+              _selectedTab == 'Bookmarks'
+                  ? 'No saved resources yet'
+                  : 'No resources found',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(
+              height: 6,
+            ),
+            Text(
+              _selectedTab == 'Bookmarks'
+                  ? 'Save useful resources and they will appear here.'
+                  : 'Try another search or category.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -342,6 +419,10 @@ class _ResourcesPageState extends State<ResourcesPage> {
   Widget _buildResourceCard(
     Map<String, dynamic> resource,
   ) {
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
     final id = resource['id'].toString();
 
     final title = resource['title']?.toString() ?? 'Health Resource';
@@ -354,95 +435,235 @@ class _ResourcesPageState extends State<ResourcesPage> {
 
     final type = resource['resource_type']?.toString() ?? 'article';
 
+    final minutes = _readMinutes(
+      resource,
+    );
+
     final saved = _savedIds.contains(id);
 
     return Card(
+      elevation: 1,
+      shadowColor: Colors.black.withValues(
+        alpha: 0.05,
+      ),
       margin: const EdgeInsets.only(
         bottom: 12,
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(
+          20,
+        ),
         onTap: () {
-          _openResource(resource);
+          _openResource(
+            resource,
+          );
         },
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
+          padding: const EdgeInsets.all(
+            15,
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(
-                    alpha: 0.10,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(
+                        14,
+                      ),
+                    ),
+                    child: Icon(
+                      _resourceIcon(
+                        type,
+                      ),
+                      color: colors.onPrimaryContainer,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(
-                    12,
+                  const SizedBox(
+                    width: 13,
                   ),
-                ),
-                child: Icon(
-                  type.toLowerCase() == 'recipe'
-                      ? Icons.restaurant_menu
-                      : Icons.article_outlined,
-                  color: Colors.redAccent,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+                  Expanded(
+                    child: Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    width: 4,
+                  ),
+                  IconButton(
+                    tooltip: saved ? 'Remove bookmark' : 'Save bookmark',
+                    onPressed: () {
+                      _toggleBookmark(
+                        resource,
+                      );
+                    },
+                    icon: Icon(
+                      saved
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
+                      color: saved ? colors.primary : colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              if (description.isNotEmpty) ...[
+                const SizedBox(
+                  height: 10,
+                ),
+                Text(
+                  description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(
+                height: 12,
+              ),
+              Wrap(
+                spacing: 14,
+                runSpacing: 8,
+                children: [
+                  _buildMetaItem(
+                    icon: type.toLowerCase() == 'recipe'
+                        ? Icons.restaurant_outlined
+                        : Icons.article_outlined,
+                    text: _resourceTypeLabel(
+                      type,
+                    ),
+                  ),
+                  _buildMetaItem(
+                    icon: Icons.favorite_outline_rounded,
+                    text: category,
+                  ),
+                  if (minutes != null)
+                    _buildMetaItem(
+                      icon: Icons.schedule_outlined,
+                      text: '$minutes min',
+                    ),
+                ],
+              ),
+              const SizedBox(
+                height: 9,
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.verified_outlined,
+                    size: 18,
+                    color: colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(
+                    width: 6,
+                  ),
+                  Expanded(
+                    child: Text(
+                      source,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(
-                      height: 4,
-                    ),
-                    Text(
-                      description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 8,
-                    ),
-                    Text(
-                      '$category • $source',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: saved ? 'Remove bookmark' : 'Save bookmark',
-                onPressed: () {
-                  _toggleBookmark(
-                    resource,
-                  );
-                },
-                icon: Icon(
-                  saved ? Icons.bookmark : Icons.bookmark_border,
-                  color: saved ? Colors.redAccent : null,
-                ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMetaItem({
+    required IconData icon,
+    required String text,
+  }) {
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 17,
+          color: colors.onSurfaceVariant,
+        ),
+        const SizedBox(
+          width: 5,
+        ),
+        Text(
+          text,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorState() {
+    final theme = Theme.of(context);
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(
+        24,
+      ),
+      children: [
+        const SizedBox(
+          height: 100,
+        ),
+        Icon(
+          Icons.error_outline,
+          size: 60,
+          color: theme.colorScheme.error,
+        ),
+        const SizedBox(
+          height: 14,
+        ),
+        Text(
+          'Unable to load health resources.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleLarge,
+        ),
+        const SizedBox(
+          height: 8,
+        ),
+        Text(
+          'Check your connection and try again.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(
+          height: 18,
+        ),
+        FilledButton.icon(
+          onPressed: _loadResources,
+          icon: const Icon(
+            Icons.refresh_rounded,
+          ),
+          label: const Text(
+            'Try Again',
+          ),
+        ),
+      ],
     );
   }
 }

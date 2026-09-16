@@ -5,12 +5,12 @@ import '../services/food_log_service.dart';
 import '../utils/sodium_rating.dart';
 
 class ProductResultPage extends StatefulWidget {
-  final ScannedProduct product;
-
   const ProductResultPage({
     super.key,
     required this.product,
   });
+
+  final ScannedProduct product;
 
   @override
   State<ProductResultPage> createState() => _ProductResultPageState();
@@ -35,6 +35,7 @@ class _ProductResultPageState extends State<ProductResultPage> {
   @override
   void dispose() {
     _quantityController.dispose();
+
     super.dispose();
   }
 
@@ -45,11 +46,17 @@ class _ProductResultPageState extends State<ProductResultPage> {
 
   String get _basis => widget.product.preferredSodiumBasis;
 
-  int? get _basisSodiumMg => _usesPer100g
-      ? widget.product.sodiumPer100gMg
-      : _usesPerServing
-          ? widget.product.sodiumPerServingMg
-          : null;
+  int? get _basisSodiumMg {
+    if (_usesPer100g) {
+      return widget.product.sodiumPer100gMg;
+    }
+
+    if (_usesPerServing) {
+      return widget.product.sodiumPerServingMg;
+    }
+
+    return null;
+  }
 
   double? get _enteredQuantity {
     return double.tryParse(
@@ -110,16 +117,8 @@ class _ProductResultPageState extends State<ProductResultPage> {
         logDate: _foodLogService.philippineNow,
         entryType: 'scanned',
         sourceBarcode: widget.product.barcode,
-
-        // For per-100 g:
-        // servings means number of 100-g units.
-        //
-        // For per-serving:
-        // servings means actual servings consumed.
         servings: _usesPer100g ? quantity / 100 : quantity,
-
         sodiumPerServingMg: sodium,
-
         sodiumBasis: _basis,
       );
 
@@ -127,7 +126,9 @@ class _ProductResultPageState extends State<ProductResultPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
         SnackBar(
           content: Text(
             '${widget.product.name} added to today\'s sodium intake.',
@@ -145,7 +146,9 @@ class _ProductResultPageState extends State<ProductResultPage> {
       }
 
       _showMessage(
-        _friendlyError(e),
+        _friendlyError(
+          e,
+        ),
       );
     } finally {
       if (mounted) {
@@ -176,7 +179,7 @@ class _ProductResultPageState extends State<ProductResultPage> {
     if (text.contains(
       'Sodium total does not match quantity',
     )) {
-      return 'The sodium calculation could not be verified. Please check the amount consumed.';
+      return 'The sodium calculation could not be verified. Check the amount consumed.';
     }
 
     return 'Unable to add food to your daily intake. Please try again.';
@@ -193,13 +196,19 @@ class _ProductResultPageState extends State<ProductResultPage> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(
+            message,
+          ),
         ),
       );
   }
 
   Widget _buildSodiumStatus() {
     final product = widget.product;
+
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
 
     if (product.sodiumPer100gMg != null) {
       final sodium = product.sodiumPer100gMg!.toDouble();
@@ -208,117 +217,184 @@ class _ProductResultPageState extends State<ProductResultPage> {
         sodium,
       );
 
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(
-          16,
+      final label = SodiumRating.labelFor(
+        sodium,
+      );
+
+      return Card(
+        elevation: 2,
+        shadowColor: Colors.black.withValues(
+          alpha: 0.07,
         ),
-        decoration: BoxDecoration(
-          color: color.withValues(
-            alpha: 0.10,
-          ),
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(
-            14,
+            18,
           ),
-          border: Border.all(
+          side: BorderSide(
             color: color.withValues(
-              alpha: 0.40,
+              alpha: 0.28,
             ),
           ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              SodiumRating.iconFor(
-                sodium,
+        child: Padding(
+          padding: const EdgeInsets.all(
+            18,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withValues(
+                    alpha: 0.11,
+                  ),
+                  borderRadius: BorderRadius.circular(
+                    14,
+                  ),
+                ),
+                child: Icon(
+                  SodiumRating.iconFor(
+                    sodium,
+                  ),
+                  color: color,
+                  size: 29,
+                ),
               ),
-              color: color,
-              size: 28,
-            ),
-            const SizedBox(
-              width: 12,
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    SodiumRating.labelFor(
-                      sodium,
-                    ),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 3,
-                  ),
-                  Text(
-                    '${product.sodiumPer100gMg} mg per 100 g',
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+              const SizedBox(
+                width: 14,
               ),
-            ),
-          ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 4,
+                    ),
+                    Text(
+                      '${product.sodiumPer100gMg} mg sodium per 100 g',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     if (product.sodiumPerServingMg != null) {
-      return Container(
-        width: double.infinity,
+      return Card(
+        elevation: 1,
+        child: Padding(
+          padding: const EdgeInsets.all(
+            18,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: colors.secondaryContainer,
+                  borderRadius: BorderRadius.circular(
+                    14,
+                  ),
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  color: colors.onSecondaryContainer,
+                ),
+              ),
+              const SizedBox(
+                width: 14,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Per-Serving Sodium',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(
+                      height: 4,
+                    ),
+                    Text(
+                      '${product.sodiumPerServingMg} mg per serving',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 5,
+                    ),
+                    Text(
+                      'A Low, Moderate, or High rating requires a per-100 g value.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      elevation: 1,
+      child: Padding(
         padding: const EdgeInsets.all(
-          16,
+          18,
         ),
-        decoration: BoxDecoration(
-          color: Colors.blueGrey.withValues(
-            alpha: 0.09,
-          ),
-          borderRadius: BorderRadius.circular(
-            14,
-          ),
-          border: Border.all(
-            color: Colors.blueGrey.withValues(
-              alpha: 0.30,
-            ),
-          ),
-        ),
-        child: const Row(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.info_outline,
-              color: Colors.blueGrey,
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(
+                  14,
+                ),
+              ),
+              child: Icon(
+                Icons.help_outline,
+                color: colors.onSurfaceVariant,
+              ),
             ),
-            SizedBox(
-              width: 12,
+            const SizedBox(
+              width: 14,
             ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Traffic-light rating unavailable',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    'Sodium Information Unavailable',
+                    style: theme.textTheme.titleMedium,
                   ),
-                  SizedBox(
-                    height: 4,
+                  const SizedBox(
+                    height: 5,
                   ),
                   Text(
-                    'This product provides sodium per serving, but Tibok requires sodium per 100 g for its traffic-light rating.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.35,
+                    'This product does not provide enough sodium information to calculate or safely log an amount.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -326,62 +402,47 @@ class _ProductResultPageState extends State<ProductResultPage> {
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(
-        16,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(
-          alpha: 0.10,
+  Widget _buildProductHeader() {
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.product.name,
+          style: theme.textTheme.headlineSmall,
         ),
-        borderRadius: BorderRadius.circular(
-          14,
+        const SizedBox(
+          height: 6,
         ),
-        border: Border.all(
-          color: Colors.grey.withValues(
-            alpha: 0.30,
-          ),
-        ),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.help_outline,
-            color: Colors.grey,
-          ),
-          SizedBox(
-            width: 12,
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sodium information unavailable',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(
-                  height: 4,
-                ),
-                Text(
-                  'Open Food Facts does not provide enough sodium information for this product. Tibok will not treat missing data as zero sodium.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.qr_code_2_rounded,
+              size: 19,
+              color: colors.onSurfaceVariant,
             ),
-          ),
-        ],
-      ),
+            const SizedBox(
+              width: 7,
+            ),
+            Expanded(
+              child: Text(
+                widget.product.barcode,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -392,20 +453,19 @@ class _ProductResultPageState extends State<ProductResultPage> {
       elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(
-          16,
+          18,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Sodium Information',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium,
             ),
             const SizedBox(
-              height: 14,
+              height: 12,
             ),
             _buildNutritionRow(
               label: 'Per 100 g',
@@ -435,26 +495,35 @@ class _ProductResultPageState extends State<ProductResultPage> {
     required String label,
     required String value,
   }) {
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         vertical: 7,
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 12,
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
+          const SizedBox(
+            width: 12,
+          ),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -469,21 +538,22 @@ class _ProductResultPageState extends State<ProductResultPage> {
 
     final total = _calculatedTotal;
 
+    final theme = Theme.of(context);
+
+    final colors = theme.colorScheme;
+
     return Card(
       elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(
-          16,
+          18,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Amount Consumed',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
+              style: theme.textTheme.titleMedium,
             ),
             const SizedBox(
               height: 14,
@@ -494,17 +564,21 @@ class _ProductResultPageState extends State<ProductResultPage> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              textInputAction: TextInputAction.done,
               onChanged: (_) {
                 setState(() {});
               },
               decoration: InputDecoration(
-                labelText:
-                    _usesPer100g ? 'Amount Consumed' : 'Servings Consumed',
+                labelText: _usesPer100g ? 'Amount' : 'Servings',
                 suffixText: _usesPer100g ? 'g' : null,
+                prefixIcon: Icon(
+                  _usesPer100g
+                      ? Icons.scale_outlined
+                      : Icons.restaurant_outlined,
+                ),
                 helperText: _usesPer100g
-                    ? 'Traffic-light rating is based on sodium per 100 g.'
-                    : 'Sodium will be calculated from the product\'s serving value.',
-                border: const OutlineInputBorder(),
+                    ? 'Enter the approximate weight you consumed.'
+                    : 'Enter the number of servings you consumed.',
               ),
             ),
             const SizedBox(
@@ -512,14 +586,15 @@ class _ProductResultPageState extends State<ProductResultPage> {
             ),
             Container(
               padding: const EdgeInsets.all(
-                14,
+                15,
               ),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
+                color: colors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(
-                  12,
+                  14,
+                ),
+                border: Border.all(
+                  color: colors.outlineVariant,
                 ),
               ),
               child: Row(
@@ -532,11 +607,13 @@ class _ProductResultPageState extends State<ProductResultPage> {
                       ),
                     ),
                   ),
+                  const SizedBox(
+                    width: 10,
+                  ),
                   Text(
                     total == null ? '-- mg' : '$total mg',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],
@@ -544,6 +621,107 @@ class _ProductResultPageState extends State<ProductResultPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHiddenSodiumCard() {
+    final product = widget.product;
+
+    if (!product.hasHiddenSodium) {
+      return const SizedBox.shrink();
+    }
+
+    final warningColor = Colors.amber.shade900;
+
+    return Container(
+      padding: const EdgeInsets.all(
+        16,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(
+          alpha: 0.10,
+        ),
+        borderRadius: BorderRadius.circular(
+          16,
+        ),
+        border: Border.all(
+          color: Colors.amber.shade700,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: warningColor,
+          ),
+          const SizedBox(
+            width: 11,
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sodium-Containing Additives Found',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: warningColor,
+                  ),
+                ),
+                const SizedBox(
+                  height: 5,
+                ),
+                Text(
+                  product.detectedHiddenIngredients.join(
+                    ', ',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIngredientsCard() {
+    final colors = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      child: ExpansionTile(
+        leading: Icon(
+          Icons.format_list_bulleted_rounded,
+          color: colors.primary,
+        ),
+        title: const Text(
+          'Ingredients',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        subtitle: const Text(
+          'Tap to view ingredient information',
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(
+          18,
+          0,
+          18,
+          18,
+        ),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              widget.product.ingredientsText,
+              style: const TextStyle(
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -562,141 +740,68 @@ class _ProductResultPageState extends State<ProductResultPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(
-            20,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(
+            18,
+            10,
+            18,
+            30,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _buildProductHeader(),
+              const SizedBox(
+                height: 18,
+              ),
               _buildSodiumStatus(),
               const SizedBox(
-                height: 20,
-              ),
-              Text(
-                product.name,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(
-                height: 6,
-              ),
-              Text(
-                'Barcode: ${product.barcode}',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(
-                height: 20,
+                height: 14,
               ),
               _buildNutritionCard(),
-              const SizedBox(
-                height: 16,
-              ),
-              _buildConsumptionCard(),
+              if (product.hasAnySodiumData) ...[
+                const SizedBox(
+                  height: 14,
+                ),
+                _buildConsumptionCard(),
+              ],
               if (product.hasHiddenSodium) ...[
                 const SizedBox(
-                  height: 16,
+                  height: 14,
                 ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(
-                      12,
-                    ),
-                    border: Border.all(
-                      color: Colors.amber.shade700,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.amber.shade900,
-                          ),
-                          const SizedBox(
-                            width: 8,
-                          ),
-                          Expanded(
-                            child: Text(
-                              'Hidden Sodium Additives Detected',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber.shade900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 8,
-                      ),
-                      Text(
-                        'Contains: ${product.detectedHiddenIngredients.join(", ")}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildHiddenSodiumCard(),
               ],
               const SizedBox(
-                height: 22,
+                height: 14,
               ),
-              const Text(
-                'Ingredients',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+              _buildIngredientsCard(),
               const SizedBox(
-                height: 6,
+                height: 20,
               ),
-              Text(
-                product.ingredientsText,
-                style: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(
-                height: 32,
-              ),
-              FilledButton.icon(
-                onPressed: _isLogging || !product.hasAnySodiumData
-                    ? null
-                    : _logFoodItem,
-                icon: _isLogging
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
+              SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: FilledButton.icon(
+                  onPressed: _isLogging || !product.hasAnySodiumData
+                      ? null
+                      : _logFoodItem,
+                  icon: _isLogging
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.add_task_rounded,
                         ),
-                      )
-                    : const Icon(
-                        Icons.add_task,
-                      ),
-                label: Text(
-                  !product.hasAnySodiumData
-                      ? 'Sodium Data Required'
-                      : _isLogging
-                          ? 'Adding...'
-                          : 'Log to Daily Sodium Intake',
-                ),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
+                  label: Text(
+                    !product.hasAnySodiumData
+                        ? 'Sodium Data Required'
+                        : _isLogging
+                            ? 'Adding...'
+                            : 'Add to Food Log',
                   ),
                 ),
               ),
@@ -705,12 +810,11 @@ class _ProductResultPageState extends State<ProductResultPage> {
                   height: 10,
                 ),
                 Text(
-                  'Use Tibok\'s Add Food → Enter Food Manually option if you have the product\'s nutrition label.',
+                  'If you have the nutrition label, use Add Food → Enter Food Manually.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall,
                 ),
               ],
             ],
