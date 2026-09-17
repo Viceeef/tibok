@@ -16,13 +16,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   bool _isLoading = false;
   bool _emailSent = false;
-
   String? _errorMessage;
 
   @override
   void dispose() {
     _emailController.dispose();
-
     super.dispose();
   }
 
@@ -39,13 +37,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     final email = _emailController.text.trim();
 
-    if (!_looksLikeEmail(
-      email,
-    )) {
+    if (!_looksLikeEmail(email)) {
       setState(() {
         _errorMessage = 'Enter a valid email address.';
       });
-
       return;
     }
 
@@ -72,9 +67,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       }
 
       setState(() {
-        _errorMessage = _friendlyError(
-          e,
-        );
+        _errorMessage = _friendlyError(e);
       });
     } finally {
       if (mounted) {
@@ -90,25 +83,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   ) {
     final text = error.toString().toLowerCase();
 
-    if (text.contains(
-          'rate limit',
-        ) ||
-        text.contains(
-          'email rate limit exceeded',
-        )) {
+    if (text.contains('rate limit') ||
+        text.contains('email rate limit exceeded')) {
       return 'Too many reset requests were sent. Wait a while before trying again.';
     }
 
-    if (text.contains(
-          'network',
-        ) ||
-        text.contains(
-          'socket',
-        )) {
+    if (text.contains('network') || text.contains('socket')) {
       return 'Check your internet connection and try again.';
     }
 
-    return 'The password reset email could not be sent. Please try again.';
+    return 'The reset email could not be sent. Please try again.';
   }
 
   @override
@@ -141,7 +125,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(
-          height: 24,
+          height: 22,
         ),
         Center(
           child: Container(
@@ -153,8 +137,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
             child: Icon(
               Icons.lock_reset_rounded,
-              color: colors.onPrimaryContainer,
               size: 42,
+              color: colors.onPrimaryContainer,
             ),
           ),
         ),
@@ -228,15 +212,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         ),
         const SizedBox(
-          height: 10,
+          height: 8,
         ),
         TextButton(
           onPressed: _isLoading
               ? null
               : () {
-                  Navigator.pop(
-                    context,
-                  );
+                  Navigator.pop(context);
                 },
           child: const Text(
             'Back to Login',
@@ -258,8 +240,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         Icon(
           Icons.mark_email_read_outlined,
-          color: colors.primary,
           size: 72,
+          color: colors.primary,
         ),
         const SizedBox(
           height: 20,
@@ -320,9 +302,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         FilledButton(
           onPressed: () {
-            Navigator.pop(
-              context,
-            );
+            Navigator.pop(context);
           },
           child: const Text(
             'Return to Login',

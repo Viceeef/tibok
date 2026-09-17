@@ -38,14 +38,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     FocusManager.instance.primaryFocus?.unfocus();
 
     final newPassword = _newPasswordController.text;
-
     final confirmPassword = _confirmPasswordController.text;
 
     if (newPassword.length < 8) {
       setState(() {
         _errorMessage = 'Password must contain at least 8 characters.';
       });
-
       return;
     }
 
@@ -53,7 +51,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       setState(() {
         _errorMessage = 'The passwords do not match.';
       });
-
       return;
     }
 
@@ -102,9 +99,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
       setState(() {
         _isLoading = false;
-        _errorMessage = _friendlyError(
-          e,
-        );
+        _errorMessage = _friendlyError(e);
       });
     }
   }
@@ -125,9 +120,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       return 'The password does not meet the account password requirements.';
     }
 
-    if (text.contains(
-      'same password',
-    )) {
+    if (text.contains('same password')) {
       return 'Choose a password different from your previous password.';
     }
 

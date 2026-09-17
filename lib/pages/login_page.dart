@@ -26,7 +26,6 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-
     super.dispose();
   }
 
@@ -99,12 +98,7 @@ class _LoginPageState extends State<LoginPage> {
       return 'Please verify your email before logging in.';
     }
 
-    if (text.contains(
-          'network',
-        ) ||
-        text.contains(
-          'socket',
-        )) {
+    if (text.contains('network') || text.contains('socket')) {
       return 'Check your internet connection and try again.';
     }
 
@@ -236,9 +230,11 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: _isLoading
                             ? null
                             : () {
-                                setState(() {
-                                  _hidePassword = !_hidePassword;
-                                });
+                                setState(
+                                  () {
+                                    _hidePassword = !_hidePassword;
+                                  },
+                                );
                               },
                         icon: Icon(
                           _hidePassword

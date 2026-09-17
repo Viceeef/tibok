@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/supabase_service.dart';
-import 'main_dashboard_page.dart';
+import 'auth_gate.dart';
 
 class OnboardingHealthPage extends StatefulWidget {
   const OnboardingHealthPage({
@@ -41,11 +41,24 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
       return;
     }
 
-    final age = int.parse(_ageController.text.trim());
+    final age = int.tryParse(
+      _ageController.text.trim(),
+    );
 
-    final systolic = int.parse(_systolicController.text.trim());
+    final systolic = int.tryParse(
+      _systolicController.text.trim(),
+    );
 
-    final diastolic = int.parse(_diastolicController.text.trim());
+    final diastolic = int.tryParse(
+      _diastolicController.text.trim(),
+    );
+
+    if (age == null || systolic == null || diastolic == null) {
+      _showMessage(
+        'Check the health information you entered.',
+      );
+      return;
+    }
 
     if (systolic <= diastolic) {
       _showMessage(
@@ -70,14 +83,18 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
         return;
       }
 
-      _showMessage(
-        'Health profile setup complete.',
-      );
-
-      Navigator.pushAndRemoveUntil(
-        context,
+      // IMPORTANT:
+      // Restore AuthGate as the root route instead of making
+      // MainDashboardPage the root.
+      //
+      // AuthGate will see the authenticated user + completed
+      // health profile and display the dashboard.
+      //
+      // Keeping AuthGate alive also allows logout to react
+      // correctly to Supabase's signedOut event.
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (_) => const MainDashboardPage(),
+          builder: (_) => const AuthGate(),
         ),
         (route) => false,
       );
@@ -119,7 +136,9 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
   String? _validateAge(
     String? value,
   ) {
-    final age = int.tryParse(value?.trim() ?? '');
+    final age = int.tryParse(
+      value?.trim() ?? '',
+    );
 
     if (age == null) {
       return 'Enter a valid age';
@@ -135,7 +154,9 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
   String? _validateSystolic(
     String? value,
   ) {
-    final number = int.tryParse(value?.trim() ?? '');
+    final number = int.tryParse(
+      value?.trim() ?? '',
+    );
 
     if (number == null) {
       return 'Enter systolic';
@@ -151,7 +172,9 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
   String? _validateDiastolic(
     String? value,
   ) {
-    final number = int.tryParse(value?.trim() ?? '');
+    final number = int.tryParse(
+      value?.trim() ?? '',
+    );
 
     if (number == null) {
       return 'Enter diastolic';
@@ -254,7 +277,6 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
     BuildContext context,
   ) {
     final theme = Theme.of(context);
-
     final colors = theme.colorScheme;
 
     final sodiumTarget = _hasHypertension ? 1500 : 2000;
@@ -320,7 +342,8 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
                                   height: 5,
                                 ),
                                 Text(
-                                  'These details help Tibok set your sodium target and starting blood pressure reference.',
+                                  'These details help Tibok personalize your '
+                                  'sodium tracking and starting blood pressure information.',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: colors.onSurfaceVariant,
                                   ),
@@ -388,7 +411,7 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
                           top: 4,
                         ),
                         child: Text(
-                          'Daily sodium target: $sodiumTarget mg',
+                          'Tibok daily sodium target: $sodiumTarget mg',
                         ),
                       ),
                       value: _hasHypertension,
@@ -397,11 +420,9 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
                           : (
                               value,
                             ) {
-                              setState(
-                                () {
-                                  _hasHypertension = value;
-                                },
-                              );
+                              setState(() {
+                                _hasHypertension = value;
+                              });
                             },
                     ),
                   ),
@@ -443,15 +464,15 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
                       children: [
                         Icon(
                           Icons.info_outline,
-                          color: colors.primary,
                           size: 21,
+                          color: colors.primary,
                         ),
                         const SizedBox(
                           width: 10,
                         ),
                         const Expanded(
                           child: Text(
-                            'Your baseline reading is stored for tracking purposes. '
+                            'This reading is stored for tracking purposes. '
                             'A single blood pressure reading does not establish a diagnosis.',
                           ),
                         ),
@@ -468,8 +489,8 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                              color: Colors.white,
                               strokeWidth: 2,
+                              color: Colors.white,
                             ),
                           )
                         : const Text(

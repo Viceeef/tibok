@@ -28,13 +28,13 @@ class _LandingPageState extends State<LandingPage> {
       icon: Icons.qr_code_scanner_rounded,
       title: 'Scan Food Barcodes',
       subtitle:
-          'Scan packaged foods to check sodium information and identify sodium-containing additives.',
+          'Scan packaged foods to check sodium information before adding them to your food log.',
     ),
     _LandingSlide(
       icon: Icons.favorite_rounded,
       title: 'Monitor Blood Pressure',
       subtitle:
-          'Record your blood pressure and view your readings and trends over time.',
+          'Record your blood pressure and review your readings and trends over time.',
     ),
   ];
 
@@ -43,11 +43,10 @@ class _LandingPageState extends State<LandingPage> {
   @override
   void dispose() {
     _pageController.dispose();
-
     super.dispose();
   }
 
-  Future<void> _goToNextPage() async {
+  Future<void> _nextPage() async {
     await _pageController.nextPage(
       duration: const Duration(
         milliseconds: 250,
@@ -264,7 +263,7 @@ class _LandingPageState extends State<LandingPage> {
                         ),
                         width: double.infinity,
                         child: FilledButton.icon(
-                          onPressed: _goToNextPage,
+                          onPressed: _nextPage,
                           icon: const Icon(
                             Icons.arrow_forward_rounded,
                           ),

@@ -117,8 +117,9 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     bool saving = false;
+    String? dialogError;
 
-    await showDialog<void>(
+    final updated = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (
@@ -144,7 +145,19 @@ class _ProfilePageState extends State<ProfilePage> {
                       textInputAction: TextInputAction.done,
                       decoration: const InputDecoration(
                         labelText: 'Username',
+                        prefixIcon: Icon(
+                          Icons.person_outline,
+                        ),
                       ),
+                      onChanged: (_) {
+                        if (dialogError != null) {
+                          setDialogState(
+                            () {
+                              dialogError = null;
+                            },
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(
                       height: 14,
@@ -154,11 +167,28 @@ class _ProfilePageState extends State<ProfilePage> {
                         labelText: 'Email',
                         helperText:
                             'Your email is shown for account reference.',
+                        prefixIcon: Icon(
+                          Icons.email_outlined,
+                        ),
                       ),
                       child: Text(
                         _email,
                       ),
                     ),
+                    if (dialogError != null) ...[
+                      const SizedBox(
+                        height: 12,
+                      ),
+                      Text(
+                        dialogError!,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -167,9 +197,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: saving
                       ? null
                       : () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+
                           Navigator.of(
                             dialogContext,
-                          ).pop();
+                          ).pop(
+                            false,
+                          );
                         },
                   child: const Text(
                     'Cancel',
@@ -182,8 +216,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           final username = usernameController.text.trim();
 
                           if (username.isEmpty) {
-                            _showMessage(
-                              'Username cannot be empty.',
+                            setDialogState(
+                              () {
+                                dialogError = 'Username cannot be empty.';
+                              },
                             );
                             return;
                           }
@@ -191,6 +227,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           setDialogState(
                             () {
                               saving = true;
+                              dialogError = null;
                             },
                           );
 
@@ -216,15 +253,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               return;
                             }
 
+                            FocusManager.instance.primaryFocus?.unfocus();
+
                             Navigator.of(
                               dialogContext,
-                            ).pop();
-
-                            _showMessage(
-                              'Profile updated.',
+                            ).pop(
+                              true,
                             );
-
-                            await _loadProfile();
                           } catch (_) {
                             if (!dialogContext.mounted) {
                               return;
@@ -233,11 +268,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             setDialogState(
                               () {
                                 saving = false;
+                                dialogError =
+                                    'Could not update profile. Please try again.';
                               },
-                            );
-
-                            _showMessage(
-                              'Could not update profile.',
                             );
                           }
                         },
@@ -267,24 +300,36 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     usernameController.dispose();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (updated == true) {
+      await _loadProfile();
+
+      if (!mounted) {
+        return;
+      }
+
+      _showMessage(
+        'Profile updated.',
+      );
+    }
   }
 
   Future<void> _showChangePasswordDialog() async {
     final currentPasswordController = TextEditingController();
-
     final newPasswordController = TextEditingController();
-
     final confirmPasswordController = TextEditingController();
 
     bool saving = false;
-
     bool hideCurrent = true;
     bool hideNew = true;
     bool hideConfirm = true;
-
     String? dialogError;
 
-    await showDialog<void>(
+    final changed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (
@@ -314,13 +359,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           Icons.lock_outline,
                         ),
                         suffixIcon: IconButton(
-                          onPressed: () {
-                            setDialogState(
-                              () {
-                                hideCurrent = !hideCurrent;
-                              },
-                            );
-                          },
+                          onPressed: saving
+                              ? null
+                              : () {
+                                  setDialogState(
+                                    () {
+                                      hideCurrent = !hideCurrent;
+                                    },
+                                  );
+                                },
                           icon: Icon(
                             hideCurrent
                                 ? Icons.visibility_outlined
@@ -342,13 +389,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           Icons.lock_reset,
                         ),
                         suffixIcon: IconButton(
-                          onPressed: () {
-                            setDialogState(
-                              () {
-                                hideNew = !hideNew;
-                              },
-                            );
-                          },
+                          onPressed: saving
+                              ? null
+                              : () {
+                                  setDialogState(
+                                    () {
+                                      hideNew = !hideNew;
+                                    },
+                                  );
+                                },
                           icon: Icon(
                             hideNew
                                 ? Icons.visibility_outlined
@@ -370,13 +419,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           Icons.lock_reset,
                         ),
                         suffixIcon: IconButton(
-                          onPressed: () {
-                            setDialogState(
-                              () {
-                                hideConfirm = !hideConfirm;
-                              },
-                            );
-                          },
+                          onPressed: saving
+                              ? null
+                              : () {
+                                  setDialogState(
+                                    () {
+                                      hideConfirm = !hideConfirm;
+                                    },
+                                  );
+                                },
                           icon: Icon(
                             hideConfirm
                                 ? Icons.visibility_outlined
@@ -420,7 +471,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
                           Navigator.of(
                             dialogContext,
-                          ).pop();
+                          ).pop(
+                            false,
+                          );
                         },
                   child: const Text(
                     'Cancel',
@@ -432,9 +485,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       : () async {
                           final currentPassword =
                               currentPasswordController.text;
-
                           final newPassword = newPasswordController.text;
-
                           final confirmation = confirmPasswordController.text;
 
                           if (currentPassword.isEmpty) {
@@ -496,10 +547,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
                             Navigator.of(
                               dialogContext,
-                            ).pop();
-
-                            _showMessage(
-                              'Password changed successfully.',
+                            ).pop(
+                              true,
                             );
                           } catch (e) {
                             if (!dialogContext.mounted) {
@@ -544,6 +593,16 @@ class _ProfilePageState extends State<ProfilePage> {
     currentPasswordController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (changed == true) {
+      _showMessage(
+        'Password changed successfully.',
+      );
+    }
   }
 
   String _passwordError(
@@ -894,18 +953,15 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    await SupabaseService.signOut();
+    try {
+      await SupabaseService.signOut();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
 
-    if (!mounted) {
-      return;
-    }
-
-    if (Navigator.canPop(
-      context,
-    )) {
-      Navigator.popUntil(
-        context,
-        (route) => route.isFirst,
+      _showMessage(
+        'Could not log out. Please try again.',
       );
     }
   }

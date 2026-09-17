@@ -18,37 +18,32 @@ class MainDashboardPage extends StatefulWidget {
 class _MainDashboardPageState extends State<MainDashboardPage> {
   int _selectedIndex = 0;
 
-  late final List<Widget> _pages;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _pages = [
-      HomePage(
-        onOpenFoodLog: () {
-          _selectTab(1);
-        },
-        onOpenBloodPressure: () {
-          _selectTab(2);
-        },
-      ),
-      const FoodLogPage(),
-      const BloodPressurePage(),
-      const ResourcesPage(),
-      const ProfilePage(),
-    ];
-  }
+  int _homeRefresh = 0;
+  int _foodLogRefresh = 0;
 
   void _selectTab(
     int index,
   ) {
-    if (index < 0 || index >= _pages.length || index == _selectedIndex) {
+    if (index < 0 || index >= 5) {
+      return;
+    }
+
+    if (index == _selectedIndex) {
       return;
     }
 
     setState(() {
       _selectedIndex = index;
+
+      // Refresh Home whenever the user returns to it.
+      if (index == 0) {
+        _homeRefresh++;
+      }
+
+      // Refresh Food Log whenever the user opens it.
+      if (index == 1) {
+        _foodLogRefresh++;
+      }
     });
   }
 
@@ -58,10 +53,32 @@ class _MainDashboardPageState extends State<MainDashboardPage> {
   ) {
     final colors = Theme.of(context).colorScheme;
 
+    final pages = <Widget>[
+      HomePage(
+        key: ValueKey(
+          'home-$_homeRefresh',
+        ),
+        onOpenFoodLog: () {
+          _selectTab(1);
+        },
+        onOpenBloodPressure: () {
+          _selectTab(2);
+        },
+      ),
+      FoodLogPage(
+        key: ValueKey(
+          'food-log-$_foodLogRefresh',
+        ),
+      ),
+      const BloodPressurePage(),
+      const ResourcesPage(),
+      const ProfilePage(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: SafeArea(
         top: false,
@@ -69,8 +86,12 @@ class _MainDashboardPageState extends State<MainDashboardPage> {
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(22),
-              topRight: Radius.circular(22),
+              topLeft: Radius.circular(
+                22,
+              ),
+              topRight: Radius.circular(
+                22,
+              ),
             ),
             border: Border(
               top: BorderSide(
@@ -92,8 +113,12 @@ class _MainDashboardPageState extends State<MainDashboardPage> {
           ),
           child: ClipRRect(
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(22),
-              topRight: Radius.circular(22),
+              topLeft: Radius.circular(
+                22,
+              ),
+              topRight: Radius.circular(
+                22,
+              ),
             ),
             child: NavigationBar(
               height: 82,

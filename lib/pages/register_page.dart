@@ -46,13 +46,6 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showMessage(
-        'Passwords do not match.',
-      );
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
@@ -68,10 +61,6 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      _showMessage(
-        'Account created successfully.',
-      );
-
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -84,11 +73,17 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      _showMessage(
-        _friendlyRegisterError(
-          e,
-        ),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              _friendlyRegisterError(
+                e,
+              ),
+            ),
+          ),
+        );
     } finally {
       if (mounted) {
         setState(() {
@@ -112,43 +107,15 @@ class _RegisterPageState extends State<RegisterPage> {
       return 'An account with this email already exists.';
     }
 
-    if (text.contains(
-          'password',
-        ) &&
-        text.contains(
-          'characters',
-        )) {
+    if (text.contains('password')) {
       return 'Password must contain at least 8 characters.';
     }
 
-    if (text.contains(
-          'network',
-        ) ||
-        text.contains(
-          'socket',
-        )) {
+    if (text.contains('network') || text.contains('socket')) {
       return 'Check your internet connection and try again.';
     }
 
     return 'Unable to create the account. Please try again.';
-  }
-
-  void _showMessage(
-    String message,
-  ) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-          ),
-        ),
-      );
   }
 
   @override
@@ -231,9 +198,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     validator: (
                       value,
                     ) {
-                      final username = value?.trim() ?? '';
-
-                      if (username.isEmpty) {
+                      if (value == null || value.trim().isEmpty) {
                         return 'Enter username';
                       }
 
@@ -296,9 +261,11 @@ class _RegisterPageState extends State<RegisterPage> {
                         onPressed: _isLoading
                             ? null
                             : () {
-                                setState(() {
-                                  _hidePassword = !_hidePassword;
-                                });
+                                setState(
+                                  () {
+                                    _hidePassword = !_hidePassword;
+                                  },
+                                );
                               },
                         icon: Icon(
                           _hidePassword
@@ -340,9 +307,12 @@ class _RegisterPageState extends State<RegisterPage> {
                         onPressed: _isLoading
                             ? null
                             : () {
-                                setState(() {
-                                  _hideConfirmPassword = !_hideConfirmPassword;
-                                });
+                                setState(
+                                  () {
+                                    _hideConfirmPassword =
+                                        !_hideConfirmPassword;
+                                  },
+                                );
                               },
                         icon: Icon(
                           _hideConfirmPassword
