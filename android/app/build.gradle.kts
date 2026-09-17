@@ -5,16 +5,17 @@ plugins {
 }
 
 android {
-    namespace = "com.example.tibok" // Your app's namespace
+    namespace = "com.example.tibok"
     compileSdk = flutter.compileSdkVersion
 
-    // Explicitly set to a stable installed NDK version (e.g., 26.1.10909125)
-    // or set ndkVersion = flutter.ndkVersion
-    ndkVersion = flutter.ndkVersion 
+    ndkVersion = flutter.ndkVersion
 
     defaultConfig {
         applicationId = "com.example.tibok"
-        minSdk = 24 // Android 7.0 Nougat requirement
+
+        // Android 7.0 Nougat minimum requirement
+        minSdk = 24
+
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -25,6 +26,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    buildTypes {
+        release {
+            // For the Tibok academic/testing APK.
+            // This makes the release APK installable on other Android devices.
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
 }
 
 kotlin {
