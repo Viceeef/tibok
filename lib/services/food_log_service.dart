@@ -49,9 +49,6 @@ class FoodLogService {
     String? sourceBarcode,
     double servings = 1,
     int? sodiumPerServingMg,
-
-    // Existing scanner calls can omit this for now.
-    // Unknown is safer than assigning a false nutrition basis.
     String sodiumBasis = 'unknown',
   }) async {
     if (foodName.trim().isEmpty) {
@@ -92,31 +89,33 @@ class FoodLogService {
       );
     }
 
-    final result = await _client.rpc(
-      'tibok_add_food_log',
-      params: {
-        'p_request_id': requestId,
-        'p_food_name': foodName.trim(),
-        'p_sodium_amount': sodiumAmount,
-        'p_log_date': _formatDate(
-          logDate ?? philippineNow,
-        ),
-        'p_entry_type': entryType,
-        'p_source_barcode': sourceBarcode,
-        'p_servings': servings,
-        'p_sodium_per_serving': sodiumPerServingMg,
-        'p_sodium_basis': sodiumBasis,
-      },
-    );
+    final response = await _client
+        .from('daily_sodium_log')
+        .insert({
+          'user_id': _currentUserId,
+          'client_request_id': requestId,
+          'food_name': foodName.trim(),
+          'sodium_amount': sodiumAmount,
+          'log_date': _formatDate(
+            logDate ?? philippineNow,
+          ),
+          'entry_type': entryType,
+          'source_barcode': sourceBarcode,
+          'servings': servings,
+          'sodium_per_serving_mg': sodiumPerServingMg,
+          'sodium_basis': sodiumBasis,
+        })
+        .select('id')
+        .single();
 
-    return result.toString();
+    return response['id'].toString();
   }
 
   Future<List<Map<String, dynamic>>> getLogsForDate(
     DateTime date,
   ) async {
     final response = await _client
-        .from('daily_sodium_logs')
+        .from('daily_sodium_log')
         .select()
         .eq(
           'user_id',
@@ -221,7 +220,7 @@ class FoodLogService {
     }
 
     await _client
-        .from('daily_sodium_logs')
+        .from('daily_sodium_log')
         .update(updates)
         .eq(
           'id',
@@ -237,7 +236,7 @@ class FoodLogService {
     String logId,
   ) async {
     await _client
-        .from('daily_sodium_logs')
+        .from('daily_sodium_log')
         .delete()
         .eq(
           'id',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/supabase_service.dart';
+import 'auth_gate.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,7 +17,6 @@ class _LoginPageState extends State<LoginPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   final TextEditingController _emailController = TextEditingController();
-
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
@@ -50,8 +50,21 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      Navigator.of(context).popUntil(
-        (route) => route.isFirst,
+      // Always restore AuthGate as the root route.
+      //
+      // AuthGate will decide whether the authenticated user
+      // should see:
+      // - Health Setup
+      // - Main Dashboard
+      //
+      // This is safer than popUntil(route.isFirst), because
+      // LoginPage may sometimes become the root route after
+      // password recovery or other navigation flows.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const AuthGate(),
+        ),
+        (route) => false,
       );
     } catch (e) {
       if (!mounted) {
@@ -230,11 +243,9 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: _isLoading
                             ? null
                             : () {
-                                setState(
-                                  () {
-                                    _hidePassword = !_hidePassword;
-                                  },
-                                );
+                                setState(() {
+                                  _hidePassword = !_hidePassword;
+                                });
                               },
                         icon: Icon(
                           _hidePassword

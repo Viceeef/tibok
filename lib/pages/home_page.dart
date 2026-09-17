@@ -96,14 +96,19 @@ class _HomePageState extends State<HomePage> {
         _todaySodium = total;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('TIBOK DASHBOARD ERROR: $e');
+      debugPrintStack(
+        label: 'TIBOK DASHBOARD STACK',
+        stackTrace: stackTrace,
+      );
+
       if (!mounted) {
         return;
       }
 
       setState(() {
         _errorMessage = e.toString();
-
         _isLoading = false;
       });
     }

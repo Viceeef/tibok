@@ -48,7 +48,7 @@ class SupabaseService {
     final user = response.user;
 
     if (user != null) {
-      await client.from('profiles').upsert({
+      await client.from('user_profile').upsert({
         'id': user.id,
         'username': username,
         'email': email,
@@ -113,9 +113,6 @@ class SupabaseService {
       );
     }
 
-    //
-    // Verify the current password before changing anything.
-    //
     final verification = await client.auth.signInWithPassword(
       email: email,
       password: currentPassword,
@@ -182,7 +179,7 @@ class SupabaseService {
 
     final int dailyLimit = hasHypertension ? 1500 : 2000;
 
-    await client.from('health_profiles').upsert(
+    await client.from('health_profile').upsert(
       {
         'user_id': user.id,
         'age': age,
@@ -203,7 +200,7 @@ class SupabaseService {
     }
 
     final response = await client
-        .from('health_profiles')
+        .from('health_profile')
         .select()
         .eq(
           'user_id',

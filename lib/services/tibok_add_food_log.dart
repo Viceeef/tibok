@@ -53,7 +53,7 @@ class FoodLogService {
     }
 
     final response = await _client
-        .from('daily_sodium_logs')
+        .from('daily_sodium_log')
         .select()
         .eq('user_id', userId)
         .eq('log_date', _formatDate(date))
@@ -108,7 +108,7 @@ class FoodLogService {
     }
 
     await _client
-        .from('daily_sodium_logs')
+        .from('daily_sodium_log')
         .update({
           'food_name': foodName.trim(),
           'sodium_amount': sodiumAmount,
@@ -127,7 +127,7 @@ class FoodLogService {
     }
 
     await _client
-        .from('daily_sodium_logs')
+        .from('daily_sodium_log')
         .delete()
         .eq('id', logId)
         .eq('user_id', userId);

@@ -49,7 +49,7 @@ class BloodPressureService {
     int limit = 100,
   }) async {
     final response = await _client
-        .from('blood_pressure_logs')
+        .from('blood_pressure_log')
         .select()
         .eq('user_id', _currentUserId)
         .order('logged_at', ascending: false)
@@ -93,7 +93,7 @@ class BloodPressureService {
       diastolic: diastolic,
     );
 
-    await _client.from('blood_pressure_logs').insert({
+    await _client.from('blood_pressure_log').insert({
       'user_id': _currentUserId,
       'systolic': systolic,
       'diastolic': diastolic,
@@ -107,7 +107,7 @@ class BloodPressureService {
     String readingId,
   ) async {
     await _client
-        .from('blood_pressure_logs')
+        .from('blood_pressure_log')
         .delete()
         .eq('id', readingId)
         .eq('user_id', _currentUserId);

@@ -16,7 +16,7 @@ class AuthGate extends StatelessWidget {
   ) async {
     try {
       final profile = await SupabaseService.client
-          .from('health_profiles')
+          .from('health_profile')
           .select('id')
           .eq(
             'user_id',
@@ -34,9 +34,42 @@ class AuthGate extends StatelessWidget {
         'Session validation failed: $e',
       );
 
-      await SupabaseService.signOut();
-
-      return const LandingPage();
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    size: 56,
+                  ),
+                  const SizedBox(
+                    height: 16,
+                  ),
+                  const Text(
+                    'Unable to load your Tibok account.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 8,
+                  ),
+                  const Text(
+                    'Please check your connection and reopen the app.',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
     }
   }
 
