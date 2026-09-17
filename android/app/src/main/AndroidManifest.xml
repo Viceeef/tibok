@@ -21,6 +21,16 @@
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
+            <!--
+                IMPORTANT:
+                Supabase Flutter uses app_links internally.
+                Disable Flutter's built-in deep-link routing so
+                the recovery callback is handled by Supabase/app_links.
+            -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
+
             <!-- Normal Tibok launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -41,7 +51,6 @@
 
         </activity>
 
-        <!-- Flutter embedding -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
