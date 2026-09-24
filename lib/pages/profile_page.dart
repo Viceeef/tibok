@@ -1,731 +1,497 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/supabase_service.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({
-    super.key,
-  });
+  const ProfilePage({super.key});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  Map<String, dynamic>? _profile;
-  Map<String, dynamic>? _healthProfile;
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic>? _account;
+  Map<String, dynamic>? _health;
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _load();
   }
 
-  Future<void> _loadProfile() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-    }
-
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final user = SupabaseService.currentUser;
-
-      if (user == null) {
-        throw Exception('You must be logged in.');
-      }
-
-      final profileResponse = await SupabaseService.client
+      if (user == null) throw Exception('You must be logged in.');
+      final account = await SupabaseService.client
           .from('user_profile')
           .select()
           .eq('id', user.id)
           .maybeSingle();
-
-      final healthProfile = await SupabaseService.getHealthProfile();
-
+      final health = await SupabaseService.getHealthProfile();
       if (!mounted) return;
-
       setState(() {
-        _profile = profileResponse;
-        _healthProfile = healthProfile;
-        _isLoading = false;
+        _account = account;
+        _health = health;
+        _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
+        _error = e.toString();
+        _loading = false;
       });
     }
   }
 
   String get _username {
-    final username = _profile?['username']?.toString().trim();
-
-    if (username != null && username.isNotEmpty) {
-      return username;
-    }
-
-    return 'Tibok User';
+    final value = _account?['username']?.toString().trim() ?? '';
+    return value.isEmpty ? 'Tibok User' : value;
   }
 
   String get _email {
-    final profileEmail = _profile?['email']?.toString().trim();
-
-    if (profileEmail != null && profileEmail.isNotEmpty) {
-      return profileEmail;
-    }
-
-    return SupabaseService.currentUser?.email ?? 'No email available';
+    final value = _account?['email']?.toString().trim() ?? '';
+    return value.isEmpty
+        ? (SupabaseService.currentUser?.email ?? 'No email available')
+        : value;
   }
 
-  String get _initial {
-    final name = _username.trim();
-
-    if (name.isEmpty) {
-      return 'T';
-    }
-
-    return name[0].toUpperCase();
+  void _message(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _showEditProfileDialog() async {
-    final usernameController = TextEditingController(
-      text: _username,
-    );
-
-    bool saving = false;
-
-    await showDialog<void>(
+  Future<void> _editAccount() async {
+    final controller = TextEditingController(text: _username);
+    var saving = false;
+    final saved = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (
-            context,
-            setDialogState,
-          ) {
-            return AlertDialog(
-              title: const Text(
-                'Edit Profile',
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: usernameController,
-                      enabled: !saving,
-                      textInputAction: TextInputAction.done,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        helperText:
-                            'Email changes require account verification.',
-                        border: OutlineInputBorder(),
-                      ),
-                      child: Text(_email),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: saving
-                      ? null
-                      : () {
-                          Navigator.pop(
-                            dialogContext,
-                          );
-                        },
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: saving
-                      ? null
-                      : () async {
-                          final username = usernameController.text.trim();
-
-                          if (username.isEmpty) {
-                            _showMessage(
-                              'Username cannot be empty.',
-                            );
-                            return;
-                          }
-
-                          setDialogState(() {
-                            saving = true;
-                          });
-
-                          try {
-                            final user = SupabaseService.currentUser;
-
-                            if (user == null) {
-                              throw Exception(
-                                'You must be logged in.',
-                              );
-                            }
-
-                            await SupabaseService.client
-                                .from('user_profile')
-                                .update({
-                              'username': username,
-                            }).eq(
-                              'id',
-                              user.id,
-                            );
-
-                            if (!dialogContext.mounted) {
-                              return;
-                            }
-
-                            Navigator.pop(
-                              dialogContext,
-                            );
-
-                            _showMessage(
-                              'Profile updated.',
-                            );
-
-                            await _loadProfile();
-                          } catch (e) {
-                            if (!dialogContext.mounted) {
-                              return;
-                            }
-
-                            setDialogState(() {
-                              saving = false;
-                            });
-
-                            _showMessage(
-                              'Could not update profile: $e',
-                            );
-                          }
-                        },
-                  child: saving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Save Changes',
-                        ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    usernameController.dispose();
-  }
-
-  Future<void> _showHealthProfile() async {
-    final profile = _healthProfile;
-
-    if (profile == null) {
-      _showMessage(
-        'No health profile is available.',
-      );
-      return;
-    }
-
-    final age = profile['age']?.toString() ?? '—';
-
-    final hasHypertension = profile['has_hypertension'] == true;
-
-    final systolic = profile['baseline_systolic']?.toString() ?? '—';
-
-    final diastolic = profile['baseline_diastolic']?.toString() ?? '—';
-
-    final sodiumLimit = profile['daily_sodium_limit']?.toString() ?? '—';
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            'Health Profile',
-          ),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Profile'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildInfoRow(
-                'Age',
-                age,
+              TextField(
+                controller: controller,
+                enabled: !saving,
+                maxLength: 50,
+                decoration: const InputDecoration(labelText: 'Username'),
               ),
-              _buildInfoRow(
-                'Hypertension',
-                hasHypertension ? 'Yes' : 'No',
-              ),
-              _buildInfoRow(
-                'Baseline BP',
-                '$systolic / $diastolic mmHg',
-              ),
-              _buildInfoRow(
-                'Daily Sodium Limit',
-                '$sodiumLimit mg',
-              ),
+              const SizedBox(height: 8),
+              Text('Email: $_email'),
+              const Text('Email changes require account verification.'),
             ],
           ),
           actions: [
+            TextButton(
+              onPressed:
+                  saving ? null : () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child: const Text('Close'),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final username = controller.text.trim();
+                      if (username.isEmpty) {
+                        _message('Username cannot be empty.');
+                        return;
+                      }
+                      setDialogState(() => saving = true);
+                      try {
+                        final user = SupabaseService.currentUser;
+                        if (user == null)
+                          throw Exception('You must be logged in.');
+                        await SupabaseService.client
+                            .from('user_profile')
+                            .update({'username': username}).eq('id', user.id);
+                        if (dialogContext.mounted)
+                          Navigator.pop(dialogContext, true);
+                      } catch (e) {
+                        if (dialogContext.mounted)
+                          setDialogState(() => saving = false);
+                        _message('Could not update profile: $e');
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save'),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
+    controller.dispose();
+    if (saved == true) {
+      _message('Profile updated.');
+      await _load();
+    }
   }
 
-  Widget _buildInfoRow(
-    String label,
-    String value,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 8,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
+  Future<void> _editHealth() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => _HealthProfileEditor(initial: _health)),
+    );
+    if (saved == true) {
+      _message('Health profile updated.');
+      await _load();
+    }
+  }
+
+  Future<void> _showInfo(String title, String body) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(child: Text(body)),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _showNotifications() async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            'Notification Settings',
-          ),
-          content: const Text(
-            'Notification preferences are planned for a later Tibok update. '
-            'The current MVP focuses on sodium tracking, blood pressure '
-            'monitoring, and health resources.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showHelp() async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            'Help & Support',
-          ),
-          content: const SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'How do I track sodium?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Use Scan Food for packaged products or Add Food '
-                  'for common meals and manual entries.',
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'How do I record blood pressure?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Open Blood Pressure and tap the plus button to '
-                  'record systolic, diastolic, and heart rate values.',
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Where are health resources?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Open Health Resources to browse, bookmark, and '
-                  'visit trusted external health information.',
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showAbout() async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            'About Tibok',
-          ),
-          content: const Text(
-            'Tibok is a mobile health application designed to help users '
-            'monitor daily sodium intake and blood pressure, identify sodium '
-            'in foods, and access educational heart-health resources.\n\n'
-            'The application was developed by students from Silliman University '
-            'under the Bachelor of Science in Information Technology (BSIT-III) '
-            'program.\n\n'
-            'Lead Developer: Somoza\n'
-            'Technical Lead: Dan\n'
-            'Project Manager: Jae',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _handleLogout() async {
+  Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text(
-            'Are you sure you want to log out of Tibok?',
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to log out of Tibok?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-              ),
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
     );
-
     if (confirmed != true) return;
-
-    await SupabaseService.signOut();
-
-    if (mounted && Navigator.canPop(context)) {
-      Navigator.popUntil(
-        context,
-        (route) => route.isFirst,
-      );
+    try {
+      await SupabaseService.signOut();
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } catch (e) {
+      _message('Could not log out: $e');
     }
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-        ),
-      );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-      ),
-      body: _buildBody(),
+      appBar: AppBar(title: const Text('Profile')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Unable to load your profile: $_error'),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: _load,
+                        child: const Text('Try Again'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 30),
+                    children: [
+                      Center(
+                        child: CircleAvatar(
+                          radius: 48,
+                          child: Text(
+                            _username[0].toUpperCase(),
+                            style: const TextStyle(fontSize: 36),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _username,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      Text(_email, textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: OutlinedButton.icon(
+                          onPressed: _editAccount,
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Edit Profile'),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Account & Health',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Card(
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.favorite_outline),
+                              title: const Text('Health Profile'),
+                              subtitle: Text(
+                                _health == null
+                                    ? 'Add your health details'
+                                    : 'Edit age, hypertension, baseline BP, and sodium limit',
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: _editHealth,
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(Icons.notifications_outlined),
+                              title: const Text('Notification Settings'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => _showInfo(
+                                'Notification Settings',
+                                'Notification preferences are planned for a later Tibok update.',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Support',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Card(
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.help_outline),
+                              title: const Text('Help & Support'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => _showInfo(
+                                'Help & Support',
+                                'Use Scan Food or Add Food to record sodium. Open Food Log and use the date arrows to review past entries. Open Blood Pressure to record readings.',
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(Icons.info_outline),
+                              title: const Text('About Tibok'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => _showInfo(
+                                'About Tibok',
+                                'Tibok helps users track daily sodium intake and blood pressure and access heart-health resources.\n\nDeveloped by students from Silliman University, BSIT-III.\n\nLead Developer: Somoza\nTechnical Lead: Dan\nProject Manager: Jae',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      OutlinedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Logout'),
+                      ),
+                    ],
+                  ),
+                ),
+    );
+  }
+}
+
+class _HealthProfileEditor extends StatefulWidget {
+  const _HealthProfileEditor({required this.initial});
+  final Map<String, dynamic>? initial;
+
+  @override
+  State<_HealthProfileEditor> createState() => _HealthProfileEditorState();
+}
+
+class _HealthProfileEditorState extends State<_HealthProfileEditor> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _age;
+  late final TextEditingController _systolic;
+  late final TextEditingController _diastolic;
+  late final TextEditingController _sodiumLimit;
+  late bool _hypertension;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final profile = widget.initial;
+    _hypertension = profile?['has_hypertension'] == true;
+    _age = TextEditingController(text: profile?['age']?.toString() ?? '');
+    _systolic = TextEditingController(
+      text: profile?['baseline_systolic']?.toString() ?? '',
+    );
+    _diastolic = TextEditingController(
+      text: profile?['baseline_diastolic']?.toString() ?? '',
+    );
+    _sodiumLimit = TextEditingController(
+      text: profile?['daily_sodium_limit']?.toString() ??
+          (_hypertension ? '1500' : '2000'),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
+  @override
+  void dispose() {
+    _age.dispose();
+    _systolic.dispose();
+    _diastolic.dispose();
+    _sodiumLimit.dispose();
+    super.dispose();
+  }
 
-    if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 60,
-                color: Colors.redAccent,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Unable to load your profile.',
-                style: TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _loadProfile,
-                icon: const Icon(
-                  Icons.refresh,
-                ),
-                label: const Text(
-                  'Try Again',
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+  String? _range(String? value, String label, int min, int max) {
+    final number = int.tryParse(value?.trim() ?? '');
+    if (number == null || number < min || number > max) {
+      return 'Enter $label from $min to $max';
     }
+    return null;
+  }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        24,
-        20,
-        30,
-      ),
-      children: [
-        Center(
-          child: CircleAvatar(
-            radius: 52,
-            backgroundColor: Colors.redAccent.withValues(
-              alpha: 0.12,
-            ),
-            child: Text(
-              _initial,
-              style: const TextStyle(
-                fontSize: 38,
-                fontWeight: FontWeight.bold,
-                color: Colors.redAccent,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          _username,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          _email,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 18),
-        Center(
-          child: OutlinedButton.icon(
-            onPressed: _showEditProfileDialog,
-            icon: const Icon(
-              Icons.edit_outlined,
-            ),
-            label: const Text(
-              'Edit Profile',
-            ),
-          ),
-        ),
-        const SizedBox(height: 28),
-        const Text(
-          'Account & Health',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.favorite_outline,
-                ),
-                title: const Text(
-                  'Health Profile',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
-                onTap: _showHealthProfile,
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(
-                  Icons.notifications_outlined,
-                ),
-                title: const Text(
-                  'Notification Settings',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
-                onTap: _showNotifications,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 22),
-        const Text(
-          'Support',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.help_outline,
-                ),
-                title: const Text(
-                  'Help & Support',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
-                onTap: _showHelp,
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(
-                  Icons.info_outline,
-                ),
-                title: const Text(
-                  'About Tibok',
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
-                onTap: _showAbout,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 28),
-        OutlinedButton.icon(
-          onPressed: _handleLogout,
-          icon: const Icon(
-            Icons.logout,
-          ),
-          label: const Text(
-            'Logout',
-          ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.redAccent,
-            side: const BorderSide(
-              color: Colors.redAccent,
-            ),
-            padding: const EdgeInsets.symmetric(
-              vertical: 15,
-            ),
-          ),
-        ),
+  Widget _numberField(
+    TextEditingController controller,
+    String label,
+    int min,
+    int max, {
+    String? suffix,
+  }) {
+    return TextFormField(
+      controller: controller,
+      enabled: !_saving,
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(5),
       ],
+      decoration: InputDecoration(labelText: label, suffixText: suffix),
+      validator: (value) => _range(value, label.toLowerCase(), min, max),
+    );
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final systolic = int.parse(_systolic.text);
+    final diastolic = int.parse(_diastolic.text);
+    if (systolic <= diastolic) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Systolic pressure should be higher than diastolic pressure.',
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final user = SupabaseService.currentUser;
+      if (user == null) throw Exception('You must be logged in.');
+      await SupabaseService.client.from('health_profile').upsert({
+        'user_id': user.id,
+        'age': int.parse(_age.text),
+        'has_hypertension': _hypertension,
+        'baseline_systolic': systolic,
+        'baseline_diastolic': diastolic,
+        'daily_sodium_limit': int.parse(_sodiumLimit.text),
+      }, onConflict: 'user_id');
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save health profile: $e')),
+      );
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit Health Profile')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _numberField(_age, 'Age', 1, 120),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Diagnosed with hypertension?'),
+                  value: _hypertension,
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(() => _hypertension = value),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Baseline blood pressure',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                _numberField(_systolic, 'Systolic', 50, 250, suffix: 'mmHg'),
+                const SizedBox(height: 16),
+                _numberField(_diastolic, 'Diastolic', 30, 150, suffix: 'mmHg'),
+                const SizedBox(height: 16),
+                _numberField(
+                  _sodiumLimit,
+                  'Daily sodium limit',
+                  1,
+                  10000,
+                  suffix: 'mg',
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Changing the hypertension answer does not overwrite your sodium limit. Adjust the limit above if needed.',
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save Health Profile'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
