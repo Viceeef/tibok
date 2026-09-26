@@ -28,6 +28,75 @@ class _AddFoodPageState extends State<AddFoodPage> {
   ];
 
   static const List<Map<String, dynamic>> _foods = [
+    // Added unsalted preparations. Sodium is estimated mg per 100 g.
+    // Sources and mixture calculations: FOOD_DATA_SOURCES.md in this update.
+    // These are separate foods, not reduced values for existing salty dishes.
+    {
+      'name': 'Roasted Chicken Breast - Unsalted',
+      'sodium': 74,
+      'category': 'Meals',
+      'preparation_note': 'Plain skinless breast meat, roasted without brine, salt, marinade, or sauce. Estimate for cooked edible meat only.',
+    },
+    {
+      'name': 'Baked Tilapia - Unsalted',
+      'sodium': 56,
+      'category': 'Meals',
+      'preparation_note': 'Plain tilapia cooked with dry heat, without salt, brine, seasoning mixes, or sauce. Weigh the cooked edible fish, excluding bones.',
+    },
+    {
+      'name': 'Brown Rice - Unsalted',
+      'sodium': 4,
+      'category': 'Meals',
+      'preparation_note': 'Cooked long-grain brown rice with no salt, broth, or sauce added.',
+    },
+    {
+      'name': 'Boiled Monggo - Unsalted',
+      'sodium': 2,
+      'category': 'Meals',
+      'preparation_note': 'Plain mung beans boiled without salt. This is not ginisang monggo with broth, fish sauce, or other ingredients.',
+    },
+    {
+      'name': 'Boiled Lentils - Unsalted',
+      'sodium': 2,
+      'category': 'Meals',
+      'preparation_note': 'Plain lentils boiled without salt, broth, or sauce.',
+    },
+    {
+      'name': 'Boiled Potatoes - Unsalted',
+      'sodium': 5,
+      'category': 'Meals',
+      'preparation_note': 'Potatoes peeled before boiling, cooked without salt, and drained. No butter, milk, or sauce included.',
+    },
+    {
+      'name': 'Boiled Summer Squash - Unsalted',
+      'sodium': 1,
+      'category': 'Meals',
+      'preparation_note': 'Summer squash boiled, drained, and prepared without salt or sauce. This entry is not for kalabasa or other winter squash.',
+    },
+    {
+      'name': 'Chicken & Brown Rice Bowl - Unsalted',
+      'sodium': 39,
+      'category': 'Meals',
+      'preparation_note': 'Calculated estimate for equal cooked weights of plain roasted skinless chicken breast and long-grain brown rice (50 g each per 100 g). No salt, brine, broth, or sauce. Log ingredients separately if your proportions differ.',
+    },
+    {
+      'name': 'Tilapia & Brown Rice Bowl - Unsalted',
+      'sodium': 30,
+      'category': 'Meals',
+      'preparation_note': 'Calculated estimate for equal cooked weights of plain baked tilapia and long-grain brown rice (50 g each per 100 g). No salt, brine, broth, or sauce. Log ingredients separately if your proportions differ.',
+    },
+    {
+      'name': 'Monggo & Brown Rice Bowl - Unsalted',
+      'sodium': 3,
+      'category': 'Meals',
+      'preparation_note': 'Calculated estimate for equal cooked weights of plain boiled mung beans and long-grain brown rice (50 g each per 100 g). No salt, broth, or sauce. Log ingredients separately if your proportions differ.',
+    },
+    {
+      'name': 'Lentil & Brown Rice Bowl - Unsalted',
+      'sodium': 3,
+      'category': 'Meals',
+      'preparation_note': 'Calculated estimate for equal cooked weights of plain boiled lentils and long-grain brown rice (50 g each per 100 g). No salt, broth, or sauce. Log ingredients separately if your proportions differ.',
+    },
     {
       'name': 'Chicken Adobo',
       'sodium': 720,
@@ -357,6 +426,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     const SizedBox(
                       height: 16,
                     ),
+                    if (food['preparation_note'] != null) ...[
+                      Text(
+                        food['preparation_note'].toString(),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     TextField(
                       controller: gramsController,
                       enabled: !saving,

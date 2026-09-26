@@ -411,7 +411,9 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
                           top: 4,
                         ),
                         child: Text(
-                          'Tibok daily sodium target: $sodiumTarget mg',
+                          'Tibok daily sodium target: $sodiumTarget mg.\n\n'
+                          'You can change your daily sodium limit later in '
+                          'Profile > Edit Health Profile.',
                         ),
                       ),
                       value: _hasHypertension,

@@ -6,10 +6,18 @@ import 'landing_page.dart';
 import 'main_dashboard_page.dart';
 import 'onboarding_health_page.dart';
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({
     super.key,
   });
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  String? _destinationUserId;
+  Future<Widget>? _destination;
 
   Future<Widget> _getDestinationPage(
     User user,
@@ -86,13 +94,20 @@ class AuthGate extends StatelessWidget {
         final session = SupabaseService.client.auth.currentSession;
 
         if (session == null) {
+          _destinationUserId = null;
+          _destination = null;
           return const LandingPage();
         }
 
+        // Password verification/update emits auth events for the same user.
+        // Keep their dashboard (and selected Profile tab) mounted throughout.
+        if (_destinationUserId != session.user.id || _destination == null) {
+          _destinationUserId = session.user.id;
+          _destination = _getDestinationPage(session.user);
+        }
+
         return FutureBuilder<Widget>(
-          future: _getDestinationPage(
-            session.user,
-          ),
+          future: _destination,
           builder: (
             context,
             destinationSnapshot,

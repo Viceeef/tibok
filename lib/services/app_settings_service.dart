@@ -11,7 +11,7 @@ extension AppTextSizeDetails on AppTextSize {
   String get label {
     switch (this) {
       case AppTextSize.standard:
-        return 'Standard';
+        return 'Normal';
       case AppTextSize.large:
         return 'Large';
       case AppTextSize.extraLarge:

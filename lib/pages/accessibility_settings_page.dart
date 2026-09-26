@@ -135,7 +135,7 @@ class AccessibilitySettingsPage extends StatelessWidget {
                   Icons.restart_alt,
                 ),
                 label: const Text(
-                  'Reset to Standard',
+                  'Reset to Normal',
                 ),
               ),
             ],

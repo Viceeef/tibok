@@ -1,3 +1,5 @@
+import '../utils/password_policy.dart';
+
 import 'package:flutter/material.dart';
 
 import '../services/supabase_service.dart';
@@ -40,9 +42,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     final newPassword = _newPasswordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    if (newPassword.length < 8) {
+    final passwordError = PasswordPolicy.validate(newPassword);
+    if (passwordError != null) {
       setState(() {
-        _errorMessage = 'Password must contain at least 8 characters.';
+        _errorMessage = passwordError;
       });
       return;
     }
@@ -203,7 +206,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   ],
                   decoration: InputDecoration(
                     labelText: 'New Password',
-                    helperText: 'Use at least 8 characters.',
+                    helperText: PasswordPolicy.requirements,
+                    helperMaxLines: 3,
                     prefixIcon: const Icon(
                       Icons.lock_outline,
                     ),

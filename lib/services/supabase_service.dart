@@ -1,3 +1,5 @@
+import '../utils/password_policy.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
@@ -37,6 +39,9 @@ class SupabaseService {
     required String password,
     required String username,
   }) async {
+    final passwordError = PasswordPolicy.validate(password);
+    if (passwordError != null) throw ArgumentError(passwordError);
+
     final response = await client.auth.signUp(
       email: email,
       password: password,
@@ -101,11 +106,8 @@ class SupabaseService {
       );
     }
 
-    if (newPassword.length < 8) {
-      throw Exception(
-        'New password must contain at least 8 characters.',
-      );
-    }
+    final passwordError = PasswordPolicy.validate(newPassword);
+    if (passwordError != null) throw ArgumentError(passwordError);
 
     if (currentPassword == newPassword) {
       throw Exception(
@@ -150,11 +152,8 @@ class SupabaseService {
       );
     }
 
-    if (newPassword.length < 8) {
-      throw Exception(
-        'Password must contain at least 8 characters.',
-      );
-    }
+    final passwordError = PasswordPolicy.validate(newPassword);
+    if (passwordError != null) throw ArgumentError(passwordError);
 
     await client.auth.updateUser(
       UserAttributes(

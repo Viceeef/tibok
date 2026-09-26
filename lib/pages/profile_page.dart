@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/supabase_service.dart';
+import 'accessibility_settings_page.dart';
+import 'change_password_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -79,6 +81,7 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Edit Profile'),
+          scrollable: true,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,16 +115,19 @@ class _ProfilePageState extends State<ProfilePage> {
                       setDialogState(() => saving = true);
                       try {
                         final user = SupabaseService.currentUser;
-                        if (user == null)
+                        if (user == null) {
                           throw Exception('You must be logged in.');
+                        }
                         await SupabaseService.client
                             .from('user_profile')
                             .update({'username': username}).eq('id', user.id);
-                        if (dialogContext.mounted)
+                        if (dialogContext.mounted) {
                           Navigator.pop(dialogContext, true);
+                        }
                       } catch (e) {
-                        if (dialogContext.mounted)
+                        if (dialogContext.mounted) {
                           setDialogState(() => saving = false);
+                        }
                         _message('Could not update profile: $e');
                       }
                     },
@@ -259,8 +265,20 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: Column(
                           children: [
                             ListTile(
+                              leading: const Icon(Icons.lock_outline),
+                              title: const Text('Change Password'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ChangePasswordPage(),
+                                ),
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
                               leading: const Icon(Icons.favorite_outline),
-                              title: const Text('Health Profile'),
+                              title: const Text('Edit Health Profile'),
                               subtitle: Text(
                                 _health == null
                                     ? 'Add your health details'
@@ -271,12 +289,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             const Divider(height: 1),
                             ListTile(
-                              leading: const Icon(Icons.notifications_outlined),
-                              title: const Text('Notification Settings'),
+                              leading: const Icon(Icons.accessibility_new_rounded),
+                              title: const Text('Accessibility Settings'),
+                              subtitle: const Text('Normal, Large, or Extra Large text'),
                               trailing: const Icon(Icons.chevron_right),
-                              onTap: () => _showInfo(
-                                'Notification Settings',
-                                'Notification preferences are planned for a later Tibok update.',
+                              onTap: () => Navigator.push<void>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AccessibilitySettingsPage(),
+                                ),
                               ),
                             ),
                           ],
@@ -296,7 +317,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () => _showInfo(
                                 'Help & Support',
-                                'Use Scan Food or Add Food to record sodium. Open Food Log and use the date arrows to review past entries. Open Blood Pressure to record readings.',
+                                'LOG FOOD\n1. From Home, tap Add Food. Search for a food or select a category, then tap the food.\n2. Enter the Amount Consumed in grams. Check the sodium total, then save the entry.\n3. If the food is missing, tap Enter Food Manually. Enter its name, sodium per 100 g in milligrams, and the amount eaten in grams. Check the product label carefully: sodium per serving is not the same as sodium per 100 g.\n\n'
+                                'SCAN PACKAGED FOOD\nOpen Scan Food from Home and allow camera access. Point the camera at the barcode. Review the product and available sodium information, enter the amount consumed as requested, and confirm adding it to your log. If the product or sodium information is unavailable, use Enter Food Manually with information from the label.\n\n'
+                                'REVIEW OR CORRECT YOUR FOOD LOG\nOpen Food Log. Use the date arrows to review another day. Tap Edit on an entry to correct its details and Save Changes. Tap Delete and confirm to remove an entry.\n\n'
+                                'LOG BLOOD PRESSURE\nOpen the BP tab and tap Log Blood Pressure. Enter your monitor readings for Systolic, Diastolic, and Heart Rate. Add notes if needed and tap Save Reading. Review your readings and trends on the BP page. Use the delete icon and confirm if you recorded a reading incorrectly. Tibok records readings; it does not measure blood pressure.\n\n'
+                                'USE RESOURCES\nOpen Resources. Search or choose All, Articles, Recipes, or Bookmarks. Tap a resource to see its preview, then tap Open Resource to visit the source. Use the bookmark icon or Save to Bookmarks to save it for later. Use Bookmarks to find saved resources; tap the bookmark again to remove it.\n\n'
+                                'EDIT YOUR HEALTH PROFILE\nOpen Profile > Edit Health Profile. Update your age, hypertension answer, baseline blood pressure, or daily sodium limit in mg. Tap Save Health Profile. Changing the hypertension answer here does not automatically change your saved sodium limit. Return to Home to see your updated target.\n\n'
+                                'MAKE TEXT EASIER TO READ\nOpen Profile > Accessibility Settings and choose Normal, Large, or Extra Large. The change applies throughout Tibok and is saved on this device. Your phone\'s text-size setting also affects the final size. Use Reset to Normal to restore the default Tibok size.\n\n'
+                                'ACCOUNT AND TROUBLESHOOTING\nUse Edit Profile to change your username. To change your password while logged in, open Profile > Change Password and enter your current password, new password, and confirmation. If you forget your password, use the password-reset option on the login screen and follow the email link. New passwords need at least 8 characters, including a letter and a number. If a page fails to load or save, check your internet connection and use its refresh or retry control. Check the log before resubmitting to avoid duplicates.',
                               ),
                             ),
                             const Divider(height: 1),
@@ -306,7 +334,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () => _showInfo(
                                 'About Tibok',
-                                'Tibok helps users track daily sodium intake and blood pressure and access heart-health resources.\n\nDeveloped by students from Silliman University, BSIT-III.\n\nLead Developer: Somoza\nTechnical Lead: Dan\nProject Manager: Jae',
+                                'Tibok helps you keep track of daily sodium intake and blood pressure in one place. It is designed to make everyday health tracking easier, including for older adults who benefit from larger text.\n\n'
+                                'FOOD AND SODIUM TRACKING\nSearch the built-in food list, enter food manually, or scan packaged-food barcodes. Record how much you eat, review your daily food log, and compare your intake with your saved sodium limit. Sodium totals depend on the food information and portions entered; ingredients, brands, and preparation can change the actual amount.\n\n'
+                                'BLOOD PRESSURE RECORDS\nSave readings from your blood pressure monitor, add notes, and review your history and trends over time.\n\n'
+                                'LEARNING RESOURCES\nBrowse articles and recipes, open their original sources, and bookmark resources you want to revisit. Content on external websites is provided by those publishers.\n\n'
+                                'YOUR PREFERENCES\nUpdate your details and sodium limit in Edit Health Profile. Choose Normal, Large, or Extra Large text in Accessibility Settings for more comfortable reading.\n\n'
+                                'Tibok supports tracking and health awareness. It does not diagnose conditions or replace advice from your healthcare professional.\n\n'
+                                'Developed by students from Silliman University, BSIT-III.\n\n'
+                                'Lead Developer: Somoza\nTechnical Lead: Dan\nProject Manager: Jae',
                               ),
                             ),
                           ],

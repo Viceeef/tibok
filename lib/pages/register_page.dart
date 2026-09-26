@@ -1,3 +1,5 @@
+import '../utils/password_policy.dart';
+
 import 'package:flutter/material.dart';
 
 import '../services/supabase_service.dart';
@@ -108,7 +110,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     if (text.contains('password')) {
-      return 'Password must contain at least 8 characters.';
+      return PasswordPolicy.requirements;
     }
 
     if (text.contains('network') || text.contains('socket')) {
@@ -251,7 +253,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ],
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      helperText: 'Use at least 8 characters.',
+                      helperText: PasswordPolicy.requirements,
+                      helperMaxLines: 3,
+                      errorMaxLines: 3,
                       prefixIcon: const Icon(
                         Icons.lock_outline,
                       ),
@@ -277,11 +281,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     validator: (
                       value,
                     ) {
-                      if (value == null || value.length < 8) {
-                        return 'Minimum 8 characters';
-                      }
-
-                      return null;
+                      return PasswordPolicy.validate(value);
                     },
                   ),
                   const SizedBox(
