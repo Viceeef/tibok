@@ -144,8 +144,8 @@ class _OnboardingHealthPageState extends State<OnboardingHealthPage> {
       return 'Enter a valid age';
     }
 
-    if (age < 1 || age > 120) {
-      return 'Enter an age from 1 to 120';
+    if (age < 18 || age > 120) {
+      return 'Enter an age from 18 to 120';
     }
 
     return null;

@@ -480,7 +480,7 @@ class _HealthProfileEditorState extends State<_HealthProfileEditor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _numberField(_age, 'Age', 1, 120),
+                _numberField(_age, 'Age', 18, 120),
                 const SizedBox(height: 16),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,

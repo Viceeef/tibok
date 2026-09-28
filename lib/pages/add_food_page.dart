@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/food_log_service.dart';
 import '../utils/sodium_rating.dart';
@@ -594,6 +595,18 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
+  double? _parseManualSodium(String value) {
+    final text = value.trim();
+    if (!RegExp(r'^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$').hasMatch(text)) {
+      return null;
+    }
+    final sodium = double.tryParse(text);
+    if (sodium == null || !sodium.isFinite || sodium <= 0 || sodium > 10000) {
+      return null;
+    }
+    return sodium;
+  }
+
   Future<void> _showManualFoodDialog() async {
     final nameController = TextEditingController();
 
@@ -617,7 +630,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             context,
             setDialogState,
           ) {
-            final sodiumPer100g = double.tryParse(
+            final sodiumPer100g = _parseManualSodium(
               sodiumController.text.trim(),
             );
 
@@ -626,7 +639,6 @@ class _AddFoodPageState extends State<AddFoodPage> {
             );
 
             final totalSodium = sodiumPer100g != null &&
-                    sodiumPer100g >= 0 &&
                     grams != null &&
                     grams > 0
                 ? (sodiumPer100g * grams / 100).round()
@@ -657,6 +669,20 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     ),
                     TextField(
                       controller: sodiumController,
+                      inputFormatters: [
+                        TextInputFormatter.withFunction((oldValue, newValue) {
+                          final text = newValue.text;
+                          // Allow empty/zero while editing; validate before saving.
+                          if (text.isEmpty || text == '.') return newValue;
+                          if (!RegExp(r'^[0-9]*\.?[0-9]*$').hasMatch(text)) {
+                            return oldValue;
+                          }
+                          final sodium = double.tryParse(text);
+                          return sodium != null && sodium.isFinite && sodium <= 10000
+                              ? newValue
+                              : oldValue;
+                        }),
+                      ],
                       enabled: !saving,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -676,7 +702,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                           Icons.water_drop_outlined,
                         ),
                         helperText:
-                            'Use the nutrition label or recipe estimate.',
+                            'Enter more than 0 and up to 10,000 mg.',
                       ),
                     ),
                     const SizedBox(
@@ -704,7 +730,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                         ),
                       ),
                     ),
-                    if (sodiumPer100g != null && sodiumPer100g >= 0) ...[
+                    if (sodiumPer100g != null) ...[
                       const SizedBox(
                         height: 16,
                       ),
@@ -754,7 +780,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       : () async {
                           final foodName = nameController.text.trim();
 
-                          final sodium = double.tryParse(
+                          final sodium = _parseManualSodium(
                             sodiumController.text.trim(),
                           );
 
@@ -771,10 +797,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
                             return;
                           }
 
-                          if (sodium == null || sodium < 0) {
+                          if (sodium == null) {
                             setDialogState(
                               () {
-                                dialogError = 'Enter a valid sodium amount.';
+                                dialogError =
+                                    'Enter sodium greater than 0 and no more than 10,000 mg.';
                               },
                             );
                             return;
