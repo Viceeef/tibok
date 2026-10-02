@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/supabase_service.dart';
 import 'accessibility_settings_page.dart';
 import 'change_password_page.dart';
+import 'delete_account_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -348,6 +349,20 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const DeleteAccountPage(),
+                          ),
+                        ),
+                        icon: const Icon(Icons.delete_forever_outlined),
+                        label: const Text('Delete Account'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: _logout,
                         icon: const Icon(Icons.logout),

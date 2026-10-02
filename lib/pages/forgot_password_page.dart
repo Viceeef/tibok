@@ -247,7 +247,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           height: 20,
         ),
         Text(
-          'Check Your Email',
+          'Reset Request Received',
           textAlign: TextAlign.center,
           style: theme.textTheme.headlineSmall,
         ),
@@ -256,7 +256,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         Text(
           'If an account is associated with ${_emailController.text.trim()}, '
-          'a password recovery email has been requested.',
+          'you will receive a password-reset link. Check your inbox and spam folder.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: colors.onSurfaceVariant,
@@ -290,7 +290,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
               const Expanded(
                 child: Text(
-                  'Open the recovery email and tap the Reset Password link. '
+                  'If you receive a recovery email, tap the Reset Password link. '
                   'Tibok will open so you can create a new password.',
                 ),
               ),
