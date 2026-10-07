@@ -723,7 +723,9 @@ class _FoodLogPageState extends State<FoodLogPage> {
 
     final statusLabel = sodiumPer100g != null
         ? SodiumRating.labelFor(sodiumPer100g)
-        : 'Sodium basis unavailable';
+        : sodiumBasis == 'per_serving'
+            ? 'Per serving'
+            : 'Sodium basis unavailable';
 
     final statusIcon = sodiumPer100g != null
         ? SodiumRating.iconFor(sodiumPer100g)

@@ -141,6 +141,47 @@ class FoodLogService {
     );
   }
 
+  /// Reusable foods from this user's past logs, newest value per food name.
+  Future<List<Map<String, dynamic>>> getPreviouslyLoggedFoods() async {
+    const pageSize = 1000;
+    final seenNames = <String>{};
+    final foods = <Map<String, dynamic>>[];
+
+    for (var offset = 0;; offset += pageSize) {
+      final rows = await _client
+          .from('daily_sodium_log')
+          .select('food_name, sodium_per_serving_mg, sodium_basis, servings')
+          .eq('user_id', _currentUserId)
+          .order('created_at', ascending: false)
+          .range(offset, offset + pageSize - 1);
+
+      for (final row in rows) {
+        final name = row['food_name']?.toString().trim() ?? '';
+        final sodium = row['sodium_per_serving_mg'];
+        final basis = row['sodium_basis']?.toString() ?? '';
+        if (name.isEmpty ||
+            sodium is! num ||
+            !const {'per_100g', 'per_serving'}.contains(basis)) {
+          continue;
+        }
+        if (!seenNames.add(name.toLowerCase())) continue;
+        foods.add({
+          'name': name,
+          'sodium': sodium,
+          'sodium_basis': basis,
+          'category': 'Your Added Food',
+          'default_grams': basis == 'per_100g'
+              ? ((row['servings'] as num?)?.toDouble() ?? 1) * 100
+              : null,
+        });
+      }
+
+      if (rows.length < pageSize) break;
+    }
+
+    return foods;
+  }
+
   Future<int> getTotalSodiumForDate(
     DateTime date,
   ) async {

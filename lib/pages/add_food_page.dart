@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../services/food_log_service.dart';
 import '../utils/sodium_rating.dart';
@@ -15,6 +14,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
   final FoodLogService _foodLogService = FoodLogService();
 
   final TextEditingController _searchController = TextEditingController();
+  late Future<List<Map<String, dynamic>>> _addedFoodsFuture;
 
   String _selectedCategory = 'All';
 
@@ -24,6 +24,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
     'Snacks',
     'Fruits',
     'Packaged',
+    'Fast Food',
+    'Your Added Food',
   ];
 
   static const List<Map<String, dynamic>> _foods = [
@@ -357,7 +359,146 @@ class _AddFoodPageState extends State<AddFoodPage> {
     {'name': 'Corned Beef', 'sodium': 850, 'category': 'Packaged'},
     {'name': 'Hotdog', 'sodium': 900, 'category': 'Packaged'},
     {'name': 'Canned Tuna', 'sodium': 430, 'category': 'Packaged'},
+    // Fast-food values are mg per listed item/order, not per 100 g.
+    // Estimates and non-PH references are marked in the UI and source notes.
+    {
+      'name': 'KFC 1-pc Chicken (cut average)',
+      'sodium': 810,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'estimate': true,
+      'source_note':
+          'Estimate: midpoint of 430 mg (drumstick) and 1,190 mg (breast) in a US KFC nutrition reference. Cut and Philippine recipe may differ. Chicken only; rice and gravy are separate.'
+    },
+    {
+      'name': 'KFC 2-pc Chicken & Rice',
+      'sodium': 1884,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'includes': 'Two pieces of chicken and rice'
+    },
+    {
+      'name': 'KFC Spaghetti',
+      'sodium': 903,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Ala King Rice Bowl',
+      'sodium': 975,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Sisig Rice Bowl',
+      'sodium': 1134,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Original Recipe Snacker',
+      'sodium': 333,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Regular Hot Shots',
+      'sodium': 420,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Famous Bowl (Snack)',
+      'sodium': 822,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Regular Crispy Fries',
+      'sodium': 167,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Regular Mashed Potato',
+      'sodium': 313,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC Regular Gravy',
+      'sodium': 359,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving'
+    },
+    {
+      'name': 'KFC 1-pc Fully Loaded Box',
+      'sodium': 2043,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'includes': 'The full boxed meal'
+    },
+    {
+      'name': 'Jollibee 1-pc Chickenjoy (cut average)',
+      'sodium': 335,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'estimate': true,
+      'source_note':
+          'Reference estimate: average of 270 mg for a drumstick and 400 mg for a thigh in Jollibee USA 2025 nutrition information. Philippine portions may differ. Chicken only; gravy and rice are separate.'
+    },
+    {
+      'name': 'Jollibee Yumburger',
+      'sodium': 630,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'estimate': true,
+      'source_note':
+          'Reference from Jollibee USA 2025 nutrition information for the Yum burger. Philippine recipe and size may differ.'
+    },
+    {
+      'name': 'Jollibee Jolly Spaghetti',
+      'sodium': 1340,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'estimate': true,
+      'source_note':
+          'Reference from Jollibee USA 2025 nutrition information for a 411 g order. Philippine portions may differ.'
+    },
+    {
+      'name': 'McDo Chicken McDo (1-pc)',
+      'sodium': 700,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'estimate': true,
+      'source_note':
+          'Historical Philippine reference from a McDonald\'s nutrition flyer reported as correct in March 2010. Current recipe and serving may differ. Chicken only; check meal sides separately.'
+    },
+    {
+      'name': 'McDo McSpaghetti',
+      'sodium': 730,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'estimate': true,
+      'source_note':
+          'Historical Philippine reference from a McDonald\'s nutrition flyer reported as correct in March 2010. Current recipe and serving may differ.'
+    },
+    {
+      'name': 'McDo Burger McDo',
+      'sodium': 760,
+      'category': 'Fast Food',
+      'sodium_basis': 'per_serving',
+      'estimate': true,
+      'source_note':
+          'Historical Philippine reference from a McDonald\'s nutrition flyer reported as correct in March 2010. Current recipe and serving may differ.'
+    },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _addedFoodsFuture = _foodLogService.getPreviouslyLoggedFoods();
+  }
 
   @override
   void dispose() {
@@ -369,8 +510,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
     final query = _searchController.text.trim().toLowerCase();
 
     return _foods.where((food) {
-      final matchesCategory =
-          _selectedCategory == 'All' || food['category'] == _selectedCategory;
+      final matchesCategory = _selectedCategory == 'All'
+          ? food['category'] != 'Fast Food'
+          : food['category'] == _selectedCategory;
 
       final name = food['name']?.toString().toLowerCase() ?? '';
 
@@ -544,250 +686,135 @@ class _AddFoodPageState extends State<AddFoodPage> {
     }
   }
 
-  double? _parseManualSodium(String value) {
-    final text = value.trim();
-    if (!RegExp(r'^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$').hasMatch(text)) {
-      return null;
-    }
-    final sodium = double.tryParse(text);
-    if (sodium == null || !sodium.isFinite || sodium <= 0 || sodium > 10000) {
-      return null;
-    }
-    return sodium;
-  }
-
-  Future<void> _showManualFoodDialog({String? initialName}) async {
-    final nameController = TextEditingController(text: initialName);
-
-    final sodiumController = TextEditingController();
-
-    final gramsController = TextEditingController(text: '100');
-
+  Future<void> _showFastFoodDialog(Map<String, dynamic> food) async {
+    final sodiumPerOrder = (food['sodium'] as num).toInt();
+    final ordersController = TextEditingController(text: '1');
     bool saving = false;
     String? dialogError;
 
     final added = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final sodiumPer100g = _parseManualSodium(
-              sodiumController.text.trim(),
-            );
-
-            final grams = double.tryParse(gramsController.text.trim());
-
-            final totalSodium =
-                sodiumPer100g != null && grams != null && grams > 0
-                    ? (sodiumPer100g * grams / 100).round()
-                    : null;
-
-            return AlertDialog(
-              title: Text(
-                initialName == null
-                    ? 'Enter Food Manually'
-                    : 'Check Package Label',
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (initialName != null) ...[
-                      const Text(
-                        'Sodium varies by flavor and pack size. Enter the value from your package. To convert a per-serving label to per 100 g: sodium (mg) ÷ serving size (g) × 100.',
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                    TextField(
-                      controller: nameController,
-                      enabled: !saving,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Food Name',
-                        prefixIcon: Icon(Icons.restaurant_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: sodiumController,
-                      inputFormatters: [
-                        TextInputFormatter.withFunction((oldValue, newValue) {
-                          final text = newValue.text;
-                          // Allow empty/zero while editing; validate before saving.
-                          if (text.isEmpty || text == '.') return newValue;
-                          if (!RegExp(r'^[0-9]*\.?[0-9]*$').hasMatch(text)) {
-                            return oldValue;
-                          }
-                          final sodium = double.tryParse(text);
-                          return sodium != null &&
-                                  sodium.isFinite &&
-                                  sodium <= 10000
-                              ? newValue
-                              : oldValue;
-                        }),
-                      ],
-                      enabled: !saving,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.next,
-                      onChanged: (_) {
-                        setDialogState(() {
-                          dialogError = null;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Sodium per 100 g',
-                        suffixText: 'mg',
-                        prefixIcon: Icon(Icons.water_drop_outlined),
-                        helperText: 'Enter more than 0 and up to 10,000 mg.',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: gramsController,
-                      enabled: !saving,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.done,
-                      onChanged: (_) {
-                        setDialogState(() {
-                          dialogError = null;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Amount Consumed',
-                        suffixText: 'g',
-                        prefixIcon: Icon(Icons.scale_outlined),
-                      ),
-                    ),
-                    if (sodiumPer100g != null) ...[
-                      const SizedBox(height: 16),
-                      _buildTrafficLight(sodiumPer100g),
-                    ],
-                    const SizedBox(height: 16),
-                    _buildTotalSodiumBox(context, totalSodium),
-                    if (dialogError != null) ...[
-                      const SizedBox(height: 12),
-                      _buildDialogError(context, dialogError!),
-                    ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final orders = double.tryParse(ordersController.text.trim());
+          final total =
+              orders != null && orders.isFinite && orders > 0 && orders <= 20
+                  ? (sodiumPerOrder * orders).round()
+                  : null;
+          return AlertDialog(
+            title: Text(food['name'].toString()),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildValueRow(context,
+                      label: 'Sodium per order', value: '$sodiumPerOrder mg'),
+                  const SizedBox(height: 12),
+                  Text(food['source_note']?.toString() ??
+                      (food['category'] == 'Your Added Food'
+                          ? 'This is the value from your previous food log. Serving size and sodium may differ from what you eat now.'
+                          : 'Based on published restaurant nutrition information. Portions may vary.')),
+                  if (food['includes'] != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Includes: ${food['includes']}.'),
                   ],
-                ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: ordersController,
+                    enabled: !saving,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setDialogState(() => dialogError = null),
+                    decoration: InputDecoration(
+                      labelText: food['category'] == 'Your Added Food'
+                          ? 'Servings Consumed'
+                          : 'Orders Consumed',
+                      prefixIcon: const Icon(Icons.numbers_rounded),
+                      helperText: food['category'] == 'Your Added Food'
+                          ? 'Use 0.5 if you had half a serving.'
+                          : 'Use 0.5 if you ate half an order.',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                      'Add sides, sauces, and drinks separately unless the order already includes them.'),
+                  const SizedBox(height: 16),
+                  _buildTotalSodiumBox(context, total),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 12),
+                    _buildDialogError(context, dialogError!),
+                  ],
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: saving
-                      ? null
-                      : () {
-                          FocusManager.instance.primaryFocus?.unfocus();
-
-                          Navigator.of(dialogContext).pop(false);
-                        },
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: saving
-                      ? null
-                      : () async {
-                          final foodName = nameController.text.trim();
-
-                          final sodium = _parseManualSodium(
-                            sodiumController.text.trim(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: saving
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        final orders =
+                            double.tryParse(ordersController.text.trim());
+                        if (orders == null ||
+                            !orders.isFinite ||
+                            orders <= 0 ||
+                            orders > 20) {
+                          setDialogState(() => dialogError =
+                              'Enter an amount greater than 0 and no more than 20 orders.');
+                          return;
+                        }
+                        setDialogState(() {
+                          saving = true;
+                          dialogError = null;
+                        });
+                        try {
+                          await _foodLogService.addFoodLog(
+                            requestId: _foodLogService.createRequestId(),
+                            foodName: food['name'].toString(),
+                            sodiumAmount: (sodiumPerOrder * orders).round(),
+                            logDate: _foodLogService.philippineNow,
+                            entryType: 'searched',
+                            servings: orders,
+                            sodiumPerServingMg: sodiumPerOrder,
+                            sodiumBasis: 'per_serving',
                           );
-
-                          final grams = double.tryParse(
-                            gramsController.text.trim(),
-                          );
-
-                          if (foodName.isEmpty) {
-                            setDialogState(() {
-                              dialogError = 'Enter a food name.';
-                            });
-                            return;
-                          }
-
-                          if (sodium == null) {
-                            setDialogState(() {
-                              dialogError =
-                                  'Enter sodium greater than 0 and no more than 10,000 mg.';
-                            });
-                            return;
-                          }
-
-                          if (grams == null || grams <= 0) {
-                            setDialogState(() {
-                              dialogError = 'Enter a valid amount consumed.';
-                            });
-                            return;
-                          }
-
-                          final total = (sodium * grams / 100).round();
-
-                          setDialogState(() {
-                            saving = true;
-                            dialogError = null;
-                          });
-
-                          try {
-                            await _foodLogService.addFoodLog(
-                              requestId: _foodLogService.createRequestId(),
-                              foodName: foodName,
-                              sodiumAmount: total,
-                              logDate: _foodLogService.philippineNow,
-                              entryType: 'manual',
-                              servings: grams / 100,
-                              sodiumPerServingMg: sodium.round(),
-                              sodiumBasis: 'per_100g',
-                            );
-
-                            if (!dialogContext.mounted) {
-                              return;
-                            }
-
-                            FocusManager.instance.primaryFocus?.unfocus();
-
+                          if (dialogContext.mounted) {
                             Navigator.of(dialogContext).pop(true);
-                          } catch (_) {
-                            if (!dialogContext.mounted) {
-                              return;
-                            }
-
+                          }
+                        } catch (_) {
+                          if (dialogContext.mounted) {
                             setDialogState(() {
                               saving = false;
                               dialogError =
                                   'Could not add this food. Please try again.';
                             });
                           }
-                        },
-                  child: saving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Add Food'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+                        }
+                      },
+                child: saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Add to Log'),
+              ),
+            ],
+          );
+        },
+      ),
     );
 
     await Future<void>.delayed(const Duration(milliseconds: 350));
-
-    nameController.dispose();
-    sodiumController.dispose();
-    gramsController.dispose();
-
-    if (!mounted) {
-      return;
-    }
-
-    if (added == true) {
+    ordersController.dispose();
+    if (mounted && added == true) {
       Navigator.pop(context, true);
     }
   }
@@ -916,11 +943,9 @@ class _AddFoodPageState extends State<AddFoodPage> {
   @override
   Widget build(BuildContext context) {
     final foods = _filteredFoods;
-
+    final query = _searchController.text.trim().toLowerCase();
     final theme = Theme.of(context);
-
     final colors = theme.colorScheme;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Add Food')),
       body: ListView(
@@ -929,11 +954,11 @@ class _AddFoodPageState extends State<AddFoodPage> {
         children: [
           TextField(
             controller: _searchController,
-            onChanged: (_) {
-              setState(() {});
-            },
+            onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: 'Search common foods',
+              hintText: _selectedCategory == 'Your Added Food'
+                  ? 'Search your added foods'
+                  : 'Search foods',
               prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: _searchController.text.isEmpty
                   ? null
@@ -944,65 +969,113 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     ),
             ),
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 58,
-            child: OutlinedButton.icon(
-              onPressed: _showManualFoodDialog,
-              icon: const Icon(Icons.edit_note_rounded, size: 25),
-              label: const Text('Enter Food Manually'),
-            ),
-          ),
           const SizedBox(height: 16),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: _categories.map((category) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(category),
-                    selected: _selectedCategory == category,
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                  ),
-                );
-              }).toList(),
+              children: _categories
+                  .map((category) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(category),
+                          selected: _selectedCategory == category,
+                          onSelected: (_) =>
+                              setState(() => _selectedCategory = category),
+                        ),
+                      ))
+                  .toList(),
             ),
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
+          if (_selectedCategory == 'Your Added Food')
+            _buildAddedFoodSection(query)
+          else ...[
+            Row(children: [
               Expanded(
-                child: Text('Common Foods', style: theme.textTheme.titleLarge),
-              ),
-              Text(
-                '${foods.length}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Values are per 100 g. Prepared foods may vary by recipe.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (foods.isEmpty)
-            _buildEmptyState()
-          else
-            ...foods.map(_buildFoodCard),
+                  child: Text(
+                      _selectedCategory == 'Fast Food'
+                          ? 'Fast Food'
+                          : 'Common Foods',
+                      style: theme.textTheme.titleLarge)),
+              Text('${foods.length}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600)),
+            ]),
+            const SizedBox(height: 5),
+            Text(
+                _selectedCategory == 'Fast Food'
+                    ? 'Values are per order. Estimates from other countries or older sources are marked.'
+                    : 'Values are per 100 g. Prepared foods may vary by recipe.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 12),
+            if (foods.isEmpty)
+              _buildEmptyState()
+            else
+              ...foods.map(_buildFoodCard),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildAddedFoodSection(String query) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _addedFoodsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError) {
+          return Card(
+              child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(children: [
+              const Text('Could not load your added foods.'),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => setState(() {
+                  _addedFoodsFuture =
+                      _foodLogService.getPreviouslyLoggedFoods();
+                }),
+                child: const Text('Try Again'),
+              ),
+            ]),
+          ));
+        }
+        final foods = (snapshot.data ?? [])
+            .where(
+                (food) => food['name'].toString().toLowerCase().contains(query))
+            .toList();
+        if (foods.isEmpty) {
+          return Card(
+              child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+                query.isEmpty
+                    ? 'Foods you log will appear here so you can add them again.'
+                    : 'No matching added foods.',
+                textAlign: TextAlign.center),
+          ));
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Your Added Food', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 5),
+            Text('Foods from your previous logs. Tap one to add it again.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: colors.onSurfaceVariant)),
+            const SizedBox(height: 12),
+            ...foods.map(_buildFoodCard),
+          ],
+        );
+      },
     );
   }
 
@@ -1025,7 +1098,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
             ),
             const SizedBox(height: 5),
             Text(
-              'Try another search or enter the food manually.',
+              'Try another search or choose a different category.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colors.onSurfaceVariant,
@@ -1038,14 +1111,19 @@ class _AddFoodPageState extends State<AddFoodPage> {
   }
 
   Widget _buildFoodCard(Map<String, dynamic> food) {
-    final sodium = (food['sodium'] as num?)?.toDouble();
+    final sodium = (food['sodium'] as num).toDouble();
+    final perServing = food['sodium_basis'] == 'per_serving';
+    final estimate = food['estimate'] == true;
 
-    final color = sodium == null
+    final color = perServing
         ? Theme.of(context).colorScheme.onSurfaceVariant
         : SodiumRating.colorFor(sodium);
 
-    final label =
-        sodium == null ? 'Check package label' : SodiumRating.labelFor(sodium);
+    final label = estimate
+        ? 'Estimate'
+        : perServing
+            ? 'Per order'
+            : SodiumRating.labelFor(sodium);
 
     final theme = Theme.of(context);
 
@@ -1062,8 +1140,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
-          if (sodium == null) {
-            _showManualFoodDialog(initialName: food['name'].toString());
+          if (perServing) {
+            _showFastFoodDialog(food);
           } else {
             _showFoodDialog(food);
           }
@@ -1083,8 +1161,8 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       borderRadius: BorderRadius.circular(13),
                     ),
                     child: Icon(
-                      sodium == null
-                          ? Icons.info_outline
+                      perServing
+                          ? Icons.restaurant_rounded
                           : SodiumRating.iconFor(sodium),
                       color: color,
                     ),
@@ -1130,13 +1208,13 @@ class _AddFoodPageState extends State<AddFoodPage> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          sodium == null ? 'Label' : '${sodium.round()} mg',
+                          '${sodium.round()} mg',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         Text(
-                          sodium == null ? 'needed' : 'per 100 g',
+                          perServing ? 'per order' : 'per 100 g',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colors.onSurfaceVariant,
                           ),
@@ -1159,9 +1237,7 @@ class _AddFoodPageState extends State<AddFoodPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          sodium == null
-                              ? 'Enter sodium from package'
-                              : '${sodium.round()} mg per 100 g',
+                          '${sodium.round()} mg ${perServing ? 'per order' : 'per 100 g'}',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
