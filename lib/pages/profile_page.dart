@@ -345,7 +345,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     'YOUR PREFERENCES\nUpdate your details and sodium limit in Edit Health Profile. Choose Normal, Large, or Extra Large text in Accessibility Settings for more comfortable reading.\n\n'
                                     'Tibok supports tracking and health awareness. It does not diagnose conditions or replace advice from your healthcare professional.\n\n'
                                     'Developed by students from Silliman University, BSIT-III.\n\n'
-                                    'Lead Developer: Somoza\nTechnical Lead: Sarabia\nProject Manager: Fabian',
+                                    'Lead Developer: Seth Somoza\nTechnical Lead: Dan Sarabia\nProject Manager: Jaelica Fabian',
                               ),
                             ),
                           ],
